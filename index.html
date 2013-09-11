@@ -1,0 +1,75 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>krang</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<script type="text/javascript" src="beautify.js"></script>
+		<script type="text/javascript" src="krang.js"></script>
+
+		<script id="script" type="text/plain">
+
+
+
+			define(function() {
+
+			})
+
+		</script>
+
+		<script type="text/javascript">
+
+			function dump(value) {
+				console.info(
+					js_beautify(
+						JSON.stringify(
+							value,
+							function(x, y) {
+								if (typeof y === 'function')
+									return y.toString()
+								return y
+							}
+						)
+					)
+				);
+			}
+
+
+			var script = document.getElementById('script').innerHTML;
+
+			krang({cache: false, debug: false}).require([
+				'src/Tokenizer',
+				'src/Parser',
+				'src/Generator'
+			], function(Tokenizer, Parser, Generator) {
+
+				// var token = new Tokenizer();
+				// token.addToken('+');
+				// token.addToken('-');
+				// token.addToken('keyword', /import\b/);
+				// token.addToken('keyword', /export\b/);
+				// token.addToken('id', /[a-zA-Z]+/);
+				// token.tokenize(script);
+
+				// while (!token.test('EOF')) {
+				// 	console.error(token.next('import'));
+				// 	console.info(token.next());
+				// }
+				// console.info(token.next());
+
+
+				var AST = Parser(script);
+				dump(AST);
+				var code = Generator(AST);
+
+				console.info(code);
+
+			});
+
+		</script>
+
+
+	</head>
+	<body>
+
+	</body>
+</html>
