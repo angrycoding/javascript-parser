@@ -221,8 +221,8 @@ define(function() {
 				}
 			}
 
-			console.info(c);
-			dump(tokenBuffer);
+			// console.info(c);
+			// dump(tokenBuffer);
 
 			return 'true?';
 
