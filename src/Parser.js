@@ -222,8 +222,8 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		result = [Constants.REGEXP, result];
 
 		var flags = (
-			tokenizer.next('ID') ||
-			tokenizer.next('KEYWORD')
+			tokenizer.next('@ID') ||
+			tokenizer.next('@KEYWORD')
 		);
 
 		if (flags) {
@@ -238,7 +238,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	function ArrayLiteral() {
 		var result = [Constants.ARRAY];
-		while (!tokenizer.test('EOF')) {
+		while (!tokenizer.test('@EOF')) {
 			while (tokenizer.next(','))
 				result.push([Constants.UNDEFINED]);
 			if (tokenizer.test(']')) break;
@@ -258,10 +258,10 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 			// @todo: escape string literal?
 			// @todo: convert DECIMAL values to string?
 			if (key = (
-				tokenizer.next('ID') ||
-				tokenizer.next('KEYWORD') ||
-				tokenizer.next('STRING') ||
-				tokenizer.next('DECIMAL')
+				tokenizer.next('@ID') ||
+				tokenizer.next('@KEYWORD') ||
+				tokenizer.next('@STRING') ||
+				tokenizer.next('@DECIMAL')
 			)) {
 				if (!tokenizer.next(':')) parseError(':');
 				result.push([String(key.value), AssignmentExpression()]);
@@ -278,21 +278,21 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 		// if (tokenizer.next('import')) return ['FUCK THAT'];
 
-		if (tokenizer.next('KEYWORD', 'null')) return [Constants.NULL];
-		if (tokenizer.next('KEYWORD', 'this')) return [Constants.THIS];
-		if (tokenizer.next('KEYWORD', 'true')) return [Constants.TRUE];
-		if (tokenizer.next('KEYWORD', 'false')) return [Constants.FALSE];
+		if (tokenizer.next('null')) return [Constants.NULL];
+		if (tokenizer.next('this')) return [Constants.THIS];
+		if (tokenizer.next('true')) return [Constants.TRUE];
+		if (tokenizer.next('false')) return [Constants.FALSE];
 
-		if (tokenizer.test('ID'))
+		if (tokenizer.test('@ID'))
 			return [Constants.NAME, tokenizer.next().value];
 
-		if (tokenizer.test('DECIMAL'))
+		if (tokenizer.test('@DECIMAL'))
 			return [Constants.NUMBER, parseFloat(tokenizer.next().value)];
 
-		if (tokenizer.test('HEX'))
+		if (tokenizer.test('@HEX'))
 			return [Constants.NUMBER, parseInt(tokenizer.next().value, 16)];
 
-		if (tokenizer.test('STRING'))
+		if (tokenizer.test('@STRING'))
 			return [Constants.STRING, escapeString(tokenizer.next().value)];
 
 		if (tokenizer.next('(')) {
@@ -306,12 +306,12 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		if (tokenizer.next('[')) return ArrayLiteral();
 		if (tokenizer.next('{')) return ObjectLiteral();
 
-		if (tokenizer.next('KEYWORD', 'function')) {
-			var args = [], name = tokenizer.next('ID');
+		if (tokenizer.next('function')) {
+			var args = [], name = tokenizer.next('@ID');
 			name = (name ? name.value : null);
 			if (!tokenizer.next('(')) parseError('(');
 			if (!tokenizer.test(')')) do {
-				var arg = tokenizer.next('ID');
+				var arg = tokenizer.next('@ID');
 				if (!arg) parseError('Identifier');
 				args.push(arg.value);
 			} while (tokenizer.next(','));
@@ -323,7 +323,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	}
 
 	function AllocationExpression(flags) {
-		if (tokenizer.next('KEYWORD', 'new')) {
+		if (tokenizer.next('new')) {
 			return [Constants.NEW, CallExpression()];
 		} else return PrimaryExpression(flags);
 	}
@@ -335,8 +335,8 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		if (left) while (true) {
 
 			if (tokenizer.next('.')) {
-				if (!tokenizer.test('ID') &&
-					!tokenizer.test('KEYWORD')) {
+				if (!tokenizer.test('@ID') &&
+					!tokenizer.test('@KEYWORD')) {
 					parseError('identifier');
 				}
 				if (left[0] !== Constants.SELECTOR)
@@ -385,11 +385,11 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	// precedence 4
 	function UnaryExpression(flags) {
-		if (tokenizer.next('KEYWORD', 'delete'))
+		if (tokenizer.next('delete'))
 			return [Constants.DELETE, UnaryExpression()];
-		else if (tokenizer.next('KEYWORD', 'void'))
+		else if (tokenizer.next('void'))
 			return [Constants.VOID, UnaryExpression()];
-		else if (tokenizer.next('KEYWORD', 'typeof'))
+		else if (tokenizer.next('typeof'))
 			return [Constants.TYPEOF, UnaryExpression()];
 		else if (tokenizer.next('++'))
 			return [Constants.UINC, UnaryExpression()];
@@ -450,9 +450,9 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	function RelationalExpression(flags) {
 		var left = ShiftExpression(flags &~ NO_IN_FLAG);
 		if (flags &= NO_IN_FLAG, flags = !flags, left) while (
-			(flags && tokenizer.next('KEYWORD', 'in')) &&
+			(flags && tokenizer.next('in')) &&
 			(left = [Constants.IN, left, ShiftExpression()]) ||
-			tokenizer.next('KEYWORD', 'instanceof') &&
+			tokenizer.next('instanceof') &&
 			(left = [Constants.INSTANCEOF, left, ShiftExpression()]) ||
 			tokenizer.next('<') &&
 			(left = [Constants.LESS_THAN, left, ShiftExpression()]) ||
@@ -602,9 +602,9 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	// simplify
 	function DoStatement() {
-		if (tokenizer.next('KEYWORD', 'do')) return [
+		if (tokenizer.next('do')) return [
 			Constants.DO_LOOP, Statement(true), (
-				tokenizer.next('KEYWORD', 'while') &&
+				tokenizer.next('while') &&
 				BracketExpression()
 			) || parseError('while')
 		];
@@ -612,7 +612,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	// completed
 	function WithStatement() {
-		if (tokenizer.next('KEYWORD', 'with')) return [
+		if (tokenizer.next('with')) return [
 			Constants.WITH,
 			BracketExpression(),
 			Statement(true)
@@ -621,7 +621,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	// completed
 	function WhileStatement() {
-		if (tokenizer.next('KEYWORD', 'while')) return [
+		if (tokenizer.next('while')) return [
 			Constants.WHILE_LOOP,
 			BracketExpression(),
 			Statement(true)
@@ -630,10 +630,10 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	// completed
 	function IfStatement() {
-		if (tokenizer.next('KEYWORD', 'if')) {
+		if (tokenizer.next('if')) {
 			var result = [Constants.IF, BracketExpression()];
 			result.push(Statement(true));
-			if (tokenizer.next('KEYWORD', 'else'))
+			if (tokenizer.next('else'))
 				result.push(Statement(true));
 			return result;
 		}
@@ -641,19 +641,19 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	// completed: refactor to simplify?
 	function TryStatement() {
-		if (!tokenizer.next('KEYWORD', 'try')) return;
+		if (!tokenizer.next('try')) return;
 		var result = [Block(true)];
-		if (tokenizer.next('KEYWORD', 'catch')) {
+		if (tokenizer.next('catch')) {
 			if (!tokenizer.next('('))
 				parseError('(');
-			var varName = tokenizer.next('ID');
+			var varName = tokenizer.next('@ID');
 			if (!varName) parseError('identifier');
 			result.push(varName.value);
 			if (!tokenizer.next(')'))
 				parseError(')');
 			result.push(Block(true));
 		}
-		if (tokenizer.next('KEYWORD', 'finally'))
+		if (tokenizer.next('finally'))
 			result.push(Block(true));
 		if (result.length < 2)
 			parseError('catch or finally');
@@ -663,11 +663,11 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	// simplify!!!!
 	function ForStatement() {
-		if (!tokenizer.next('KEYWORD', 'for')) return;
+		if (!tokenizer.next('for')) return;
 		if (!tokenizer.next('(')) parseError('(');
 
 		var result = (
-			tokenizer.test('KEYWORD', 'var') ?
+			tokenizer.test('var') ?
 			VariableStatement(NO_IN_FLAG) :
 			Expression(NO_IN_FLAG)
 		);
@@ -680,7 +680,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 			result.push(Expression(SILENT_FLAG));
 		}
 
-		else if (tokenizer.test('KEYWORD', 'in')) {
+		else if (tokenizer.test('in')) {
 
 			if (result[0] === Constants.VAR && result.length > 2) {
 				parseError(';');
@@ -699,23 +699,23 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	// simplify, check for case, continue, break new lines & labels
 	function SwitchStatement() {
-		if (!tokenizer.next('KEYWORD', 'switch')) return;
+		if (!tokenizer.next('switch')) return;
 		var expression = BracketExpression();
 		var caseStatements = [], defaultStatements;
 		if (!tokenizer.next('{')) parseError('{');
 		if (!tokenizer.test('}')) do {
 
-			if (tokenizer.next('KEYWORD', 'case')) {
+			if (tokenizer.next('case')) {
 				var condition = Expression();
 				if (!tokenizer.next(':')) parseError(':');
 				caseStatements.push([condition, Statements()])
-			} else if (tokenizer.next('KEYWORD', 'default')) {
+			} else if (tokenizer.next('default')) {
 				if (!tokenizer.next(':')) parseError(':');
 				if (defaultStatements) parseError('more than one default');
 				defaultStatements = Statements();
 			} else break;
 
-		} while (!tokenizer.test('EOF'));
+		} while (!tokenizer.test('@EOF'));
 
 		if (!tokenizer.next('}')) parseError('}');
 
@@ -742,10 +742,10 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 
 	function VariableStatement(flags) {
-		if (tokenizer.next('KEYWORD', 'var')) {
+		if (tokenizer.next('var')) {
 			var variable, variables = [Constants.VAR];
 			do {
-				variable = tokenizer.next('ID');
+				variable = tokenizer.next('@ID');
 				if (!variable) parseError('identifier');
 				variable = [variable.value];
 				if (tokenizer.next('='))
@@ -758,8 +758,8 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	// completed: simplify
 	function ThrowStatement() {
-		if (tokenizer.next('KEYWORD', 'throw')) {
-			if (tokenizer.next('EOL'))
+		if (tokenizer.next('throw')) {
+			if (tokenizer.next('@EOL'))
 				parseError('Illegal newline after throw');
 			return [Constants.THROW, Expression()];
 		}
@@ -767,7 +767,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	// completed: simplify & check for new lines bugs
 	function ReturnStatement() {
-		if (tokenizer.next('KEYWORD', 'return')) {
+		if (tokenizer.next('return')) {
 			var result = [Constants.RETURN];
 			var expression = Expression(SILENT_FLAG);
 			if (expression) result.push(expression);
@@ -777,8 +777,8 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	// completed: simplify & check for new lines bugs
 	function BreakStatement() {
-		if (tokenizer.next('KEYWORD', 'break')) {
-			var label = tokenizer.next('ID');
+		if (tokenizer.next('break')) {
+			var label = tokenizer.next('@ID');
 			if (!label) return [Constants.BREAK];
 			return [Constants.BREAK, label.value];
 		}
@@ -786,15 +786,15 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	// completed: simplify & check for new lines bugs
 	function ContinueStatement() {
-		if (tokenizer.next('KEYWORD', 'continue')) {
-			var label = tokenizer.next('ID');
+		if (tokenizer.next('continue')) {
+			var label = tokenizer.next('@ID');
 			if (!label) return [Constants.CONTINUE];
 			return [Constants.CONTINUE, label.value];
 		}
 	}
 
 	function LabelledStatement() {
-		if (tokenizer.test('ID>:')) return [
+		if (tokenizer.test('@ID', ':')) return [
 			Constants.LABELLED,
 			tokenizer.next().value,
 			(tokenizer.next(), Statement(true))
@@ -831,10 +831,10 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 
 		if (!tokenizer.next(';') &&
-			!tokenizer.test('ERR') &&
-			!tokenizer.test('EOF') &&
+			!tokenizer.test('@ERR') &&
+			!tokenizer.test('@EOF') &&
 			!tokenizer.test('}') &&
-			!tokenizer.next('EOL')) {
+			!tokenizer.next('@EOL')) {
 			parseError(';');
 		}
 
@@ -843,7 +843,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	function Statements() {
 		var statement, statements = [];
-		while (!tokenizer.test('EOF')) {
+		while (!tokenizer.test('@EOF')) {
 			if (statement = Statement()) {
 				statements.push(statement);
 			} else break;
@@ -854,7 +854,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	function Parser(source, name) {
 		tokenizer.tokenize(source);
 		var statements = Statements();
-		if (!tokenizer.test('EOF'))
+		if (!tokenizer.test('@EOF'))
 			parseError();
 		return statements;
 	}

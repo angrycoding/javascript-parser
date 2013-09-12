@@ -39,7 +39,6 @@ define(function() {
 						tokenBuffer.push({
 							ignore: data[0],
 							type: data[1],
-							attr: data[2],
 							pos: index,
 							value: textData
 						});
@@ -89,17 +88,24 @@ define(function() {
 		}
 
 
-		this.addToken = function(tokenName, expression, attr) {
+		this.addToken = function() {
+
+			var tokenName = null, expression;
+
+			if (arguments.length === 0) return;
+
+			if (arguments.length === 1) {
+				expression = arguments[0];
+			}
+
+			else if (arguments.length > 1) {
+				tokenName = arguments[0];
+				expression = arguments[1];
+			}
 
 			// if (!isString(tokenName)) return;
 			// tokenName to uppercase?
 
-			if (!arguments.length) return;
-
-			if (arguments.length === 1) {
-				expression = tokenName;
-				tokenName = tokenName;
-			}
 
 			if (isRegExp(expression)) {
 				expression = expression.toString();
@@ -111,13 +117,13 @@ define(function() {
 
 			var ignore = false;
 
-			if (tokenName[0] === '@') {
+			if (tokenName && tokenName[0] === '@') {
 				ignore = true;
 				tokenName = tokenName.substr(1);
 			}
 
 			tokenDefinitions[0].push('(' + expression + ')');
-			tokenDefinitions.push([ignore, tokenName, attr]);
+			tokenDefinitions.push([ignore, tokenName]);
 
 		};
 
@@ -132,36 +138,8 @@ define(function() {
 			);
 		};
 
-		function test(token, props) {
-			for (var key in props) {
-				if (token[key] !== props[key]) {
-					return false;
-				}
-			}
-			return true;
-		}
 
-		function readUntil(props, remove) {
 
-			if (!tokenBuffer.length) readTokens();
-
-			for (var c = 0; c < tokenBuffer.length; c++) {
-
-				var token = tokenBuffer[c];
-
-				if (!test(token, props)) {
-					if (token.ignore) continue;
-					return;
-				}
-
-				else {
-					if (remove)
-						tokenBuffer.splice(0, c + 1);
-					return token;
-				}
-
-			}
-		}
 
 
 		this.getFragment = function() {
@@ -176,29 +154,6 @@ define(function() {
 				if (code === 10 || code === 13) lineNumber++;
 			}
 			return lineNumber;
-		};
-
-		this.test = function(type, attr) {
-			// console.info('test', type);
-			var length = arguments.length;
-			return !!readUntil(
-				length > 1 ? {type: type, attr: attr} :
-				length > 0 ? {type: type} :
-				{ignore: false},
-				false
-			);
-		};
-
-		this.next = function(type, attr) {
-
-			// console.info('next', type);
-			var length = arguments.length;
-			return readUntil(
-				length > 1 ? {type: type, attr: attr} :
-				length > 0 ? {type: type} :
-				{ignore: false},
-				true
-			);
 		};
 
 
@@ -228,7 +183,7 @@ define(function() {
 		}
 
 
-		this.testAhead = function(selector) {
+		this.test = function(selector) {
 			var selector = Array.prototype.slice.call(arguments);
 
 			var notIgnoredTokensCount = 0;
@@ -278,11 +233,22 @@ define(function() {
 
 
 
-		this.consume = function(selector) {
+		this.next = function(selector) {
 			var resultArr = [];
 			var selector = Array.prototype.slice.call(arguments);
 
+			if (!selector.length) {
+				if (!tokenBuffer.length)
+					readTokens();
+				while (tokenBuffer.length) {
+					var token = tokenBuffer.shift();
+					if (!token.ignore) return token;
+				}
+			}
+
+
 			var notIgnoredTokensCount = 0;
+
 			for (var c = 0; c < tokenBuffer.length; c++) {
 				if (tokenBuffer[c].ignore) continue;
 				notIgnoredTokensCount++;

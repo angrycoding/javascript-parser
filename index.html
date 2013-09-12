@@ -8,6 +8,10 @@
 
 		<script id="script" type="text/plain">
 
+			x:
+			y:
+			z:
+
 			({
 				true: true,
 				false: false,
@@ -17,8 +21,19 @@
 				foo: (2 + 2),
 				array: [1, 2, 3],
 				_this: this,
-				_null: _foo
+				_null: _foo,
+				new: new Constructor(),
+				function: function x(a, b, c) {
+
+				}
 			}.whilex)
+
+
+			do {
+
+			} while (2 * 2);
+
+			throw foo;
 
 		</script>
 
@@ -61,7 +76,7 @@
 				// token.addToken('number', /[0-9]+/);
 				// token.tokenize(script);
 
-				// dump(token.nextAhead(['@id', '@keyword'], ':', '@id'));
+				// console.info(token.next('@id'))
 
 				// return;
 
