@@ -1,18 +1,36 @@
 define('Constants', function(Constants) {
 
-	function ProcessFunction(node) {
-		var result = 'function';
-		if (node[1]) result += ' ' + node[1];
-		result += '(' + node[2].join(', ') + ')';
-		result += ProcessNode(node[3]);
+	var level = 0;
+
+	function makeTabs(times) {
+		var result = '';
+		for (var c = 1; c <= times; c++)
+			result += '\t';
 		return result;
 	}
 
+	function adjust(string) {
+		var result = [];
+		string = string.split(/[\r\n]/);
+		for (var c = 0; c < string.length; c++) {
+			result.push(makeTabs(level) + string[c]);
+		}
+		return result.join('\n');
+	}
+
+	function ProcessFunction(node) {
+		var result = 'function';
+		if (node[1]) result += ' ' + node[1];
+		result += '(' + node[2].join(', ') + ') ';
+		result += processNode(node[3]);
+		return adjust(result);
+	}
+
 	function ProcessCall(node) {
-		var result = ProcessNode(node[1]) + '(';
+		var result = processNode(node[1]) + '(';
 		for (var c = 0; c < node[2].length; c++) {
 			if (c) result += ', ';
-			result += ProcessNode(node[2][c]);
+			result += processNode(node[2][c]);
 		}
 		return result + ')';
 	}
@@ -32,7 +50,7 @@ define('Constants', function(Constants) {
 			}
 			else {
 				if (c) result += '[';
-				result += ProcessNode(fragment);
+				result += processNode(fragment);
 				if (c) result += ']';
 			}
 		}
@@ -45,7 +63,7 @@ define('Constants', function(Constants) {
 			if (c > 1) result += ', ';
 			result += JSON.stringify(node[c][0]);
 			result += ': ';
-			result += ProcessNode(node[c][1]);
+			result += processNode(node[c][1]);
 		}
 		return result + '}';
 	}
@@ -54,19 +72,19 @@ define('Constants', function(Constants) {
 		var result = '[';
 		for (var c = 1; c < node.length; c++) {
 			if (c > 1) result += ', ';
-			result += ProcessNode(node[c]);
+			result += processNode(node[c]);
 		}
 		return result + ']';
 	}
 
 	function ProcessIf(node) {
 		var result = 'if (';
-		result += ProcessNode(node[1]);
+		result += processNode(node[1]);
 		result += ') ';
-		result += ProcessNode(node[2]);
+		result += processNode(node[2]);
 		if (node[3]) {
 			result += ' else ';
-			result += ProcessNode(node[3]);
+			result += processNode(node[3]);
 		}
 		return result;
 	}
@@ -75,7 +93,7 @@ define('Constants', function(Constants) {
 		var result = '';
 		for (var c = 1; c < node.length; c++) {
 			if (c > 1) result += ', ';
-			result += ProcessNode(node[c]);
+			result += processNode(node[c]);
 		}
 		return result;
 	}
@@ -87,27 +105,26 @@ define('Constants', function(Constants) {
 			result += node[c][0];
 			if (node[c][1]) {
 				result += ' = ';
-				result += ProcessNode(node[c][1]);
+				result += processNode(node[c][1]);
 			}
 		}
-		// result += ';';
-		return result;
+		return adjust(result, level);
 	}
 
 	function processDo(node) {
 		var result = 'do ';
-		result += ProcessNode(node[1]);
+		result += processNode(node[1]);
 		result += ' while (';
-		result += ProcessNode(node[2]);
+		result += processNode(node[2]);
 		result += ')';
 		return result;
 	}
 
 	function processWhile(node) {
 		var result = 'while (';
-		result += ProcessNode(node[1]);
+		result += processNode(node[1]);
 		result += ') ';
-		result += ProcessNode(node[2]);
+		result += processNode(node[2]);
 		return result;
 	}
 
@@ -124,18 +141,18 @@ define('Constants', function(Constants) {
 
 	function processSwitch(node) {
 		var result = 'switch (';
-		result += ProcessNode(node[1]);
+		result += processNode(node[1]);
 		result += ') {\n';
 		for (var c = 0; c < node[2].length; c++) {
 			result += 'case ';
-			result += ProcessNode(node[2][c][0]) + ':\n';
-			result += ProcessNodes(node[2][c][1]);
+			result += processNode(node[2][c][0]) + ':\n';
+			result += processNodes(node[2][c][1]);
 			result += '\n';
 		}
 
 		if (node[3]) {
 			result += 'default:\n';
-			result += ProcessNodes(node[3]);
+			result += processNodes(node[3]);
 			result += '\n';
 		}
 
@@ -145,132 +162,131 @@ define('Constants', function(Constants) {
 
 	function processForInLoop(node) {
 		var result = 'for (';
-		result += ProcessNode(node[1]);
+		result += processNode(node[1]);
 		result += ' in ';
-		result += ProcessNode(node[2]);
+		result += processNode(node[2]);
 		result += ')\n';
-		result += ProcessNode(node[3]);
+		result += processNode(node[3]);
 		return result;
 	}
 
 	function processForLoop(node) {
 		var result = 'for (';
-		result += ProcessNode(node[1]);
+		result += processNode(node[1]);
 		result += ';';
-		result += ProcessNode(node[2]);
+		result += processNode(node[2]);
 		result += ';';
-		result += ProcessNode(node[3]);
+		result += processNode(node[3]);
 		result += ')\n';
-		result += ProcessNode(node[4]);
+		result += processNode(node[4]);
 		return result;
 	}
 
-	function ProcessNode(node) {
+	function processNode(node) {
 
 		switch (node[0]) {
 
 			case Constants.NULL: return 'null';
-			case Constants.THIS: return 'this';
 			case Constants.TRUE: return 'true';
 			case Constants.FALSE: return 'false';
+			case Constants.NUMBER: return String(node[1]);
+			case Constants.STRING: return JSON.stringify(node[1]);
+			case Constants.LABELLED: return node[1] + ': ' + processNode(node[2]);
+
+			case Constants.THIS: return 'this';
 			case Constants.SWITCH: return processSwitch(node);
-			case Constants.THROW: return 'throw ' + ProcessNode(node[1]);
+			case Constants.THROW: return 'throw ' + processNode(node[1]);
 			case Constants.BREAK: return 'break ' + (node[1] ? node[1] : '');
 			case Constants.CONTINUE: return 'continue ' + (node[1] ? node[1] : '');
-			case Constants.PARENS: return '(' + ProcessNode(node[1]) + ')';
+			case Constants.PARENS: return '(' + processNode(node[1]) + ')';
 
-			case Constants.STRING: return JSON.stringify(node[1]);
 			case Constants.ARRAY: return processArray(node);
 			case Constants.OBJECT: return processMap(node);
-			case Constants.TERNARY: return ProcessNode(node[1]) + ' ? ' + ProcessNode(node[2]) + ' : ' + ProcessNode(node[3]);
-			case Constants.NUMBER: return parseFloat(node[1]);
+			case Constants.TERNARY: return processNode(node[1]) + ' ? ' + processNode(node[2]) + ' : ' + processNode(node[3]);
 
 			case Constants.REGEXP: return processRegExp(node);
 			case Constants.WHILE_LOOP: return processWhile(node);
 			case Constants.VAR: return processVar(node);
 			case Constants.DO_LOOP: return processDo(node);
-			case Constants.NEW: return 'new ' + ProcessNode(node[1]);
-			case Constants.INC: return ProcessNode(node[1]) + '++';
-			case Constants.DEC: return ProcessNode(node[1]) + '--';
-			case Constants.DELETE: return 'delete ' + ProcessNode(node[1]);
-			case Constants.VOID: return 'void ' + ProcessNode(node[1]);
-			case Constants.TYPEOF: return 'typeof ' + ProcessNode(node[1]);
-			case Constants.UINC: return '++' + ProcessNode(node[1]);
-			case Constants.UDEC: return '--' + ProcessNode(node[1]);
-			case Constants.UADD: return '+' + ProcessNode(node[1]);
-			case Constants.USUB: return '-' + ProcessNode(node[1]);
-			case Constants.BIT_NOT: return '~' + ProcessNode(node[1]);
-			case Constants.NOT: return '!' + ProcessNode(node[1]);
-			case Constants.MUL: return ProcessNode(node[1]) + ' * ' + ProcessNode(node[2]);
-			case Constants.DIV: return ProcessNode(node[1]) + ' / ' + ProcessNode(node[2]);
-			case Constants.MOD: return ProcessNode(node[1]) + ' % ' + ProcessNode(node[2]);
-			case Constants.ADD: return ProcessNode(node[1]) + ' + ' + ProcessNode(node[2]);
-			case Constants.SUB: return ProcessNode(node[1]) + ' - ' + ProcessNode(node[2]);
-			case Constants.BIT_SHL: return ProcessNode(node[1]) + ' << ' + ProcessNode(node[2]);
-			case Constants.BIT_SHR: return ProcessNode(node[1]) + ' >> ' + ProcessNode(node[2]);
-			case Constants.BIT_SHRZ: return ProcessNode(node[1]) + ' >>> ' + ProcessNode(node[2]);
-			case Constants.INSTANCEOF: return ProcessNode(node[1]) + ' instanceof ' + ProcessNode(node[2]);
-			case Constants.IN: return ProcessNode(node[1]) + ' in ' + ProcessNode(node[2]);
-			case Constants.LESS_THAN: return ProcessNode(node[1]) + ' < ' + ProcessNode(node[2]);
-			case Constants.GREATER_THAN: return ProcessNode(node[1]) + ' > ' + ProcessNode(node[2]);
-			case Constants.LESS_OR_EQUAL: return ProcessNode(node[1]) + ' <= ' + ProcessNode(node[2]);
-			case Constants.GREATER_OR_EQUAL: return ProcessNode(node[1]) + ' >= ' + ProcessNode(node[2]);
-			case Constants.EQUAL: return ProcessNode(node[1]) + ' == ' + ProcessNode(node[2]);
-			case Constants.STRICT_EQUAL: return ProcessNode(node[1]) + ' === ' + ProcessNode(node[2]);
-			case Constants.NOT_EQUAL: return ProcessNode(node[1]) + ' != ' + ProcessNode(node[2]);
-			case Constants.STRICT_NOT_EQUAL: return ProcessNode(node[1]) + ' !== ' + ProcessNode(node[2]);
-			case Constants.BIT_AND: return ProcessNode(node[1]) + ' & ' + ProcessNode(node[2]);
-			case Constants.BIT_XOR: return ProcessNode(node[1]) + ' ^ ' + ProcessNode(node[2]);
-			case Constants.BIT_OR: return ProcessNode(node[1]) + ' | ' + ProcessNode(node[2]);
-			case Constants.AND: return ProcessNode(node[1]) + ' && ' + ProcessNode(node[2]);
-			case Constants.OR: return ProcessNode(node[1]) + ' || ' + ProcessNode(node[2]);
+			case Constants.NEW: return 'new ' + processNode(node[1]);
+			case Constants.INC: return processNode(node[1]) + '++';
+			case Constants.DEC: return processNode(node[1]) + '--';
+			case Constants.DELETE: return 'delete ' + processNode(node[1]);
+			case Constants.VOID: return 'void ' + processNode(node[1]);
+			case Constants.TYPEOF: return 'typeof ' + processNode(node[1]);
+			case Constants.UINC: return '++' + processNode(node[1]);
+			case Constants.UDEC: return '--' + processNode(node[1]);
+			case Constants.UADD: return '+' + processNode(node[1]);
+			case Constants.USUB: return '-' + processNode(node[1]);
+			case Constants.BIT_NOT: return '~' + processNode(node[1]);
+			case Constants.NOT: return '!' + processNode(node[1]);
+			case Constants.MUL: return processNode(node[1]) + ' * ' + processNode(node[2]);
+			case Constants.DIV: return processNode(node[1]) + ' / ' + processNode(node[2]);
+			case Constants.MOD: return processNode(node[1]) + ' % ' + processNode(node[2]);
+			case Constants.ADD: return processNode(node[1]) + ' + ' + processNode(node[2]);
+			case Constants.SUB: return processNode(node[1]) + ' - ' + processNode(node[2]);
+			case Constants.BIT_SHL: return processNode(node[1]) + ' << ' + processNode(node[2]);
+			case Constants.BIT_SHR: return processNode(node[1]) + ' >> ' + processNode(node[2]);
+			case Constants.BIT_SHRZ: return processNode(node[1]) + ' >>> ' + processNode(node[2]);
+			case Constants.INSTANCEOF: return processNode(node[1]) + ' instanceof ' + processNode(node[2]);
+			case Constants.IN: return processNode(node[1]) + ' in ' + processNode(node[2]);
+			case Constants.LESS_THAN: return processNode(node[1]) + ' < ' + processNode(node[2]);
+			case Constants.GREATER_THAN: return processNode(node[1]) + ' > ' + processNode(node[2]);
+			case Constants.LESS_OR_EQUAL: return processNode(node[1]) + ' <= ' + processNode(node[2]);
+			case Constants.GREATER_OR_EQUAL: return processNode(node[1]) + ' >= ' + processNode(node[2]);
+			case Constants.EQUAL: return processNode(node[1]) + ' == ' + processNode(node[2]);
+			case Constants.STRICT_EQUAL: return processNode(node[1]) + ' === ' + processNode(node[2]);
+			case Constants.NOT_EQUAL: return processNode(node[1]) + ' != ' + processNode(node[2]);
+			case Constants.STRICT_NOT_EQUAL: return processNode(node[1]) + ' !== ' + processNode(node[2]);
+			case Constants.BIT_AND: return processNode(node[1]) + ' & ' + processNode(node[2]);
+			case Constants.BIT_XOR: return processNode(node[1]) + ' ^ ' + processNode(node[2]);
+			case Constants.BIT_OR: return processNode(node[1]) + ' | ' + processNode(node[2]);
+			case Constants.AND: return processNode(node[1]) + ' && ' + processNode(node[2]);
+			case Constants.OR: return processNode(node[1]) + ' || ' + processNode(node[2]);
 
-			case Constants.ASSIGN: return ProcessNode(node[1]) + ' = ' + ProcessNode(node[2]);
-			case Constants.ASSIGN_MUL: return ProcessNode(node[1]) + ' *= ' + ProcessNode(node[2]);
-			case Constants.ASSIGN_DIV: return ProcessNode(node[1]) + ' /= ' + ProcessNode(node[2]);
-			case Constants.ASSIGN_MOD: return ProcessNode(node[1]) + ' %= ' + ProcessNode(node[2]);
-			case Constants.ASSIGN_ADD: return ProcessNode(node[1]) + ' += ' + ProcessNode(node[2]);
-			case Constants.ASSIGN_SUB: return ProcessNode(node[1]) + ' -= ' + ProcessNode(node[2]);
-			case Constants.ASSIGN_BIT_SHL: return ProcessNode(node[1]) + ' <<= ' + ProcessNode(node[2]);
-			case Constants.ASSIGN_BIT_SHR: return ProcessNode(node[1]) + ' >>= ' + ProcessNode(node[2]);
-			case Constants.ASSIGN_BIT_SHRZ: return ProcessNode(node[1]) + ' >>>= ' + ProcessNode(node[2]);
-			case Constants.ASSIGN_BIT_AND: return ProcessNode(node[1]) + ' &= ' + ProcessNode(node[2]);
+			case Constants.ASSIGN: return processNode(node[1]) + ' = ' + processNode(node[2]);
+			case Constants.ASSIGN_MUL: return processNode(node[1]) + ' *= ' + processNode(node[2]);
+			case Constants.ASSIGN_DIV: return processNode(node[1]) + ' /= ' + processNode(node[2]);
+			case Constants.ASSIGN_MOD: return processNode(node[1]) + ' %= ' + processNode(node[2]);
+			case Constants.ASSIGN_ADD: return processNode(node[1]) + ' += ' + processNode(node[2]);
+			case Constants.ASSIGN_SUB: return processNode(node[1]) + ' -= ' + processNode(node[2]);
+			case Constants.ASSIGN_BIT_SHL: return processNode(node[1]) + ' <<= ' + processNode(node[2]);
+			case Constants.ASSIGN_BIT_SHR: return processNode(node[1]) + ' >>= ' + processNode(node[2]);
+			case Constants.ASSIGN_BIT_SHRZ: return processNode(node[1]) + ' >>>= ' + processNode(node[2]);
+			case Constants.ASSIGN_BIT_AND: return processNode(node[1]) + ' &= ' + processNode(node[2]);
 
-			case Constants.ASSIGN_BIT_XOR: return ProcessNode(node[1]) + ' ^= ' + ProcessNode(node[2]);
-			case Constants.ASSIGN_BIT_OR: return ProcessNode(node[1]) + ' |= ' + ProcessNode(node[2]);
+			case Constants.ASSIGN_BIT_XOR: return processNode(node[1]) + ' ^= ' + processNode(node[2]);
+			case Constants.ASSIGN_BIT_OR: return processNode(node[1]) + ' |= ' + processNode(node[2]);
 
 			case Constants.FUNCTION: return ProcessFunction(node);
-			case Constants.BLOCK: return '{' + ProcessNodes(node[1]) + '}';
+
+			case Constants.BLOCK:
+				level++;
+				var result = processNodes(node[1]);
+				level--;
+				return '{\n' + result + '}';
+
 			case Constants.CALL: return ProcessCall(node);
 			case Constants.IF: return ProcessIf(node);
 			case Constants.MULTIPLE: return parseMultiple(node);
 			case Constants.SELECTOR: return ProcessSelector(node);
-			case Constants.RETURN: return 'return ' + (node[1] ? ProcessNode(node[1]) : '');
+			case Constants.RETURN: return 'return ' + (node[1] ? processNode(node[1]) : '');
 			case Constants.NAME: return node[1];
 			case Constants.FOR_IN_LOOP: return processForInLoop(node);
 			case Constants.FOR_LOOP: return processForLoop(node);
-
-
-			case '#require': return (
-				'krang.getModule(' +
-					JSON.stringify(node[1]) +
-				')'
-			);
 
 			default:
 				console.error(node[0]);
 		}
 	}
 
-	function ProcessNodes(nodes) {
-		var result = '';
-		for (var c = 0; c < nodes.length; c++) {
-			var node = nodes[c];
-			result += ProcessNode(node) + ';\n';
-		}
-		return result;
+	function processNodes(nodes) {
+		var result = [];
+		for (var c = 0; c < nodes.length; c++)
+			result.push(processNode(nodes[c]) + ';');
+		return result.join('\n');
 	}
 
-	return ProcessNodes;
+	return processNodes;
 
 });

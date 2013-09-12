@@ -202,6 +202,140 @@ define(function() {
 		};
 
 
+
+
+
+		function testAhead(token, frag) {
+
+			if (frag instanceof Array) {
+				for (var c = 0; c < frag.length; c++) {
+					if (!testAhead(token, frag[c])) continue;
+					return true;
+				}
+			}
+
+			else {
+				var key = 'value';
+				if (frag[0] === '@') {
+					key = 'type';
+					frag = frag.slice(1);
+				}
+				// console.info(key, token[key], frag);
+				return (token[key] === frag);
+			}
+
+
+		}
+
+
+		this.testAhead = function(selector) {
+			var selector = Array.prototype.slice.call(arguments);
+
+			var notIgnoredTokensCount = 0;
+			for (var c = 0; c < tokenBuffer.length; c++) {
+				if (tokenBuffer[c].ignore) continue;
+				notIgnoredTokensCount++;
+			}
+
+			for (var c = 0; c < selector.length - notIgnoredTokensCount; c++) {
+				readTokens();
+			}
+
+			var offset = 0;
+			for (var c = 0; c < tokenBuffer.length; c++) {
+
+				var token = tokenBuffer[c],
+					frag = selector[offset];
+
+
+				if (!testAhead(token, frag)) {
+
+					if (token.ignore) {
+						// console.info('FAIL but continue');
+						continue;
+					}
+
+					else {
+						// console.info('FAIL and return');
+						return;
+					}
+				} else {
+					// console.info('SUCCESS');
+					offset++;
+					if (offset >= selector.length) break;
+				}
+			}
+
+			console.info(c);
+			dump(tokenBuffer);
+
+			return 'true?';
+
+
+		};
+
+
+
+
+
+		this.consume = function(selector) {
+			var resultArr = [];
+			var selector = Array.prototype.slice.call(arguments);
+
+			var notIgnoredTokensCount = 0;
+			for (var c = 0; c < tokenBuffer.length; c++) {
+				if (tokenBuffer[c].ignore) continue;
+				notIgnoredTokensCount++;
+			}
+
+			for (var c = 0; c < selector.length - notIgnoredTokensCount; c++) {
+				readTokens();
+			}
+
+			var offset = 0;
+			for (var c = 0; c < tokenBuffer.length; c++) {
+
+				var token = tokenBuffer[c],
+					frag = selector[offset];
+
+
+				if (!testAhead(token, frag)) {
+
+					if (token.ignore) {
+						// console.info('FAIL but continue');
+						continue;
+					}
+
+					else {
+						// console.info('FAIL and return');
+						return;
+					}
+				} else {
+					resultArr.push(token);
+					// console.info('SUCCESS');
+					offset++;
+					if (offset >= selector.length) break;
+				}
+			}
+
+			// console.info(c);
+			tokenBuffer.splice(0, c + 1);
+			// dump(resultArr);
+
+			if (resultArr.length === 1)
+				return resultArr[0];
+			else return resultArr;
+
+		};
+
+
+
+
+
+
+
+
+
 		this.testChar = function(ch) {
 			if (arguments.length === 0) return true;
 			return !!readCharacter(false, ch);

@@ -1,6 +1,9 @@
 define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
+	// used to validate regular expression flags
 	var validRegexpFlags = /^(?:([gim])(?!.*\1))*$/;
+
+	// used to convert control characters into regular characters
 	var stringEscape = /\\(t|b|n|r|f|'|"|\\|\x[0-9A-F]{2}|\u[0-9A-F]{4})/g;
 
 	var fileName = 'FILENAME';
@@ -155,7 +158,6 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 
 
-
 	function escapeString(string) {
 		var string = string.slice(1, -1);
 		return string.replace(stringEscape, function(str, ch) {
@@ -242,7 +244,8 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 			if (tokenizer.test(']')) break;
 			result.push(AssignmentExpression());
 			if (tokenizer.test(']')) break;
-			if (!tokenizer.next(',')) parseError(', or ]');
+			if (!tokenizer.next(','))
+				parseError(', or ]');
 		}
 		if (!tokenizer.next(']')) parseError(']');
 		return result;
@@ -299,14 +302,9 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 			return [Constants.PARENS, expression];
 		}
 
-		if (tokenizer.next('/'))
-			return RegExpLiteral();
-
-		if (tokenizer.next('['))
-			return ArrayLiteral();
-
-		if (tokenizer.next('{'))
-			return ObjectLiteral();
+		if (tokenizer.next('/')) return RegExpLiteral();
+		if (tokenizer.next('[')) return ArrayLiteral();
+		if (tokenizer.next('{')) return ObjectLiteral();
 
 		if (tokenizer.next('KEYWORD', 'function')) {
 			var args = [], name = tokenizer.next('ID');
@@ -728,11 +726,16 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 
 	function Block(required) {
+
+		// save current position
+
 		if (tokenizer.next('{')) {
+
 			var statements = Statements();
 			if (!tokenizer.next('}'))
 				parseError('}');
 			return [Constants.BLOCK, statements];
+
 		} else if (required) parseError('{...}');
 	}
 
@@ -790,36 +793,42 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		}
 	}
 
+	function LabelledStatement() {
+		if (tokenizer.test('ID>:')) return [
+			Constants.LABELLED,
+			tokenizer.next().value,
+			(tokenizer.next(), Statement(true))
+		];
+	}
+
 
 
 
 	function Statement(required) {
 
-		var result = (
-			WithStatement() ||
-			IfStatement() ||
-			DoStatement() ||
-			WhileStatement() ||
-			TryStatement() ||
-			ForStatement() ||
-			SwitchStatement() ||
-			Block()
-		);
+		var result;
 
-		if (result) return result;
+		if (result = Block()) return result;
+		else if (result = VariableStatement());
+		else if (tokenizer.next(';')) return ['EMPTY'];
+		else if (result = LabelledStatement()) return result;
+		else if (result = Expression(SILENT_FLAG));
+		else if (result = IfStatement()) return result;
 
-		else if (tokenizer.next(';'))
-			return ['EMPTY'];
+		else if (result = ForStatement()) return result;
+		else if (result = DoStatement()) return result;
+		else if (result = WhileStatement()) return result;
 
-		else result = (
-			VariableStatement() ||
-			ThrowStatement() ||
-			ReturnStatement() ||
-			BreakStatement() ||
-			ContinueStatement() ||
-			Expression(SILENT_FLAG) ||
-			required && parseError('STATEMENT')
-		);
+		else if (result = ContinueStatement());
+		else if (result = BreakStatement());
+		else if (result = ReturnStatement());
+		else if (result = WithStatement()) return result;
+		else if (result = SwitchStatement()) return result;
+		else if (result = ThrowStatement());
+		else if (result = TryStatement()) return result;
+
+		else if (required) parseError('STATEMENT');
+
 
 		if (!tokenizer.next(';') &&
 			!tokenizer.test('ERR') &&

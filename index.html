@@ -8,11 +8,17 @@
 
 		<script id="script" type="text/plain">
 
-
-
-			define(function() {
-
-			})
+			({
+				true: true,
+				false: false,
+				null: 10,
+				hex: 0x41,
+				string: 'string',
+				foo: (2 + 2),
+				array: [1, 2, 3],
+				_this: this,
+				_null: _foo
+			}.whilex)
 
 		</script>
 
@@ -43,12 +49,23 @@
 			], function(Tokenizer, Parser, Generator) {
 
 				// var token = new Tokenizer();
-				// token.addToken('+');
-				// token.addToken('-');
-				// token.addToken('keyword', /import\b/);
-				// token.addToken('keyword', /export\b/);
+				// token.addToken('@SPACES', /[\x09\x20]+/);
+				// token.addToken('@EOL', /[\x0A\x0D]+/);
+				// token.addToken(':');
+
+				// token.addToken('keyword', /for\b/);
+				// token.addToken('keyword', /while\b/);
+				// token.addToken('keyword', /do\b/);
 				// token.addToken('id', /[a-zA-Z]+/);
+
+				// token.addToken('number', /[0-9]+/);
 				// token.tokenize(script);
+
+				// dump(token.nextAhead(['@id', '@keyword'], ':', '@id'));
+
+				// return;
+
+
 
 				// while (!token.test('EOF')) {
 				// 	console.error(token.next('import'));
