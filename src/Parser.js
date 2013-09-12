@@ -97,8 +97,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	tokenizer.addToken('KEYWORD', /instanceof\b/, 'instanceof');
 	tokenizer.addToken('KEYWORD', /debugger\b/, 'debugger');
 
-	//[_$a-zA-Z\xA0-\uFFFF][_$a-zA-Z0-9\xA0-\uFFFF]*
-	tokenizer.addToken('ID', /[a-zA-Z_$][a-zA-Z0-9_$]*/);
+	tokenizer.addToken('ID', /[_$a-zA-Z\xA0-\uFFFF][_$a-zA-Z0-9\xA0-\uFFFF]*/);
 
 	tokenizer.addToken('STRING', /'(?:[^\'\\]|\\.)*'/);
 	tokenizer.addToken('STRING', /"(?:[^\"\\]|\\.)*"/);
@@ -276,8 +275,6 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 
 	function PrimaryExpression(flags) {
-
-		// if (tokenizer.next('import')) return ['FUCK THAT'];
 
 		if (tokenizer.next('null')) return [Constants.NULL];
 		if (tokenizer.next('this')) return [Constants.THIS];
