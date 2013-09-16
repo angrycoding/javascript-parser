@@ -1,0 +1,19 @@
+<script type="text/javascript">
+	window.onmessage = function(event) {
+		var requestObj = event.data;
+		var requestHash = requestObj.hash;
+		var requestURI = requestObj.uri;
+		var request = new XMLHttpRequest();
+		request.open('GET', requestURI, true);
+		request.onreadystatechange = function() {
+			if (request.readyState !== 4) return;
+			if (request.status === 200) {
+				event.source.postMessage({
+					hash: requestHash,
+					data: request.responseText
+				}, '*');
+			}
+		};
+		request.send(null);
+	};
+</script>

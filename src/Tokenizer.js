@@ -1,11 +1,14 @@
 define(function() {
 
+	var T_EOF = -1;
+	var T_ERR = -2;
+
+	var IGNORE_START = -3;
+	var TOKEN_START = 0;
+
+
 	function escapeRegExp(value) {
 		return value.replace(/([.?*+^$[\]\\(){}|-])/g, "\\$1");
-	}
-
-	function isString(value) {
-		return (typeof value === 'string');
 	}
 
 	function isRegExp(value) {
@@ -14,63 +17,206 @@ define(function() {
 
 	function Tokenizer() {
 
+		var tokenRegExp = [];
+		var tokenInfo = [];
 		var tokenBuffer = [];
-		var tokenDefinitions = [[]];
-		var inputString, inputStringLength;
+		var inputString, inputLength;
 
-		function readTokens() {
-			var regexp = tokenDefinitions[0],
-				textData, data, start, length, index;
-			while (true) if (regexp.lastIndex !== inputStringLength) {
-				start = regexp.lastIndex;
-				if (data = regexp.exec(inputString)) {
-					index = data.index;
-					if (length = index - start) {
+		var lastMatchId = TOKEN_START;
+		var lastIgnoreId = IGNORE_START;
+
+
+		// match next token and put it into the tokenBuffer
+		function readTokenToBuffer() {
+			var startPos, matchPos, matchStr, match, length;
+			for (;;) if (tokenRegExp.lastIndex !== inputLength) {
+				startPos = tokenRegExp.lastIndex;
+				if (match = tokenRegExp.exec(inputString)) {
+					matchPos = match.index;
+					// check if we have T_ERR token
+					if (length = matchPos - startPos) {
 						tokenBuffer.push({
-							ignore: false,
-							type: 'ERR',
-							pos: start,
-							value: inputString.substr(start, length)
+							type: T_ERR,
+							pos: startPos,
+							value: inputString.substr(startPos, length)
 						});
 					}
-					length = data.length;
-					while (--length > 0) if (textData = data[length]) {
-						data = tokenDefinitions[length];
-						tokenBuffer.push({
-							ignore: data[0],
-							type: data[1],
-							pos: index,
-							value: textData
-						});
-						if (data[0]) break; else return;
-					}
-				} else return (
-					regexp.lastIndex = inputStringLength,
-					length = inputStringLength - start &&
+					length = match.length;
+					// find matched group index
+					while (!(matchStr = match[length--]));
+					// obtain token info
+					match = tokenInfo[length];
+					// match next token in case if this one is ignored
+					if (match === IGNORE_START) continue;
+					// return matched token
+					return tokenBuffer.push({
+						type: match,
+						pos: matchPos,
+						value: matchStr
+					});
+				}
+				// return T_ERR token in case if we couldn't match anything
+				else return (
+					tokenRegExp.lastIndex = inputLength,
+					length = inputLength - startPos &&
 					tokenBuffer.push({
-						ignore: false,
-						type: 'ERR',
-						pos: start,
-						value: inputString.substr(start, length)
+						type: T_ERR,
+						pos: startPos,
+						value: inputString.substr(startPos, length)
 					})
 				);
-			} else return tokenBuffer.push({
-				ignore: false,
-				type: 'EOF',
-				pos: inputStringLength
+			}
+			// return T_EOF if we reached end of file
+			else return tokenBuffer.push({
+				type: T_EOF,
+				pos: inputLength
 			});
 		}
+
+		// retrieve token at specific position in the buffer
+		// expand buffer in case if offset > buffer size
+		function getTokenFromBuffer(offset) {
+			var toRead = offset - tokenBuffer.length + 1;
+			while (toRead-- > 0) readTokenToBuffer();
+			return tokenBuffer[offset];
+		}
+
+		function addExpression(args, ignore) {
+			if (args.length === 0) return;
+
+			var tokenId, expression;
+
+			if (args.length === 1) {
+				expression = args[0];
+				tokenId = (ignore ? IGNORE_START : TOKEN_START);
+			} else {
+				expression = args[1], tokenId = args[0], tokenId = (
+					this.hasOwnProperty(tokenId) ?
+					this[tokenId] : this[tokenId] = (
+						ignore ? --lastIgnoreId : ++lastMatchId
+					)
+				);
+			}
+
+			if (isRegExp(expression)) {
+				expression = expression.toString();
+				expression = expression.slice(1, -1);
+			} else expression = escapeRegExp(expression);
+
+			tokenRegExp.push('(' + expression + ')');
+			tokenInfo.push(tokenId);
+		}
+
+
+
+
+
+
+
+		function compare(token, selector) {
+
+			if (selector instanceof Array) {
+				for (var c = 0; c < selector.length; c++) {
+					var cResult = compare(token, selector[c]);
+					if (cResult !== 1) continue;
+					return cResult;
+				}
+			}
+
+			var key = (typeof selector === 'number' ? 'type' : 'value');
+
+			if (token[key] === selector) return 1;
+			else if (token.type <= IGNORE_START) return -1;
+			else return 0;
+
+		}
+
+
+		function consume(sequence, move) {
+
+			var result = [], sequencePos = 0, bufferPos = 0;
+
+			if (!sequence.length) {
+
+				for (;;) {
+					var token = getTokenFromBuffer(bufferPos);
+					if (token.type <= IGNORE_START) {
+						bufferPos++;
+						continue;
+					} else if (move) {
+						tokenBuffer.splice(0, bufferPos + 1);
+					}
+					return token;
+				}
+
+
+			}
+
+			else for (;;) {
+
+				var sequenceFrag = sequence[sequencePos];
+				var token = getTokenFromBuffer(bufferPos);
+				var comparison = compare(token, sequenceFrag);
+
+				// console.info('compare', token, sequenceFrag, comparison);
+
+				if (comparison === 0) return;
+
+				if (comparison === -1) {
+					bufferPos++;
+				}
+
+				else if (sequencePos < sequence.length - 1) {
+					result.push(token);
+					sequencePos++;
+					bufferPos++;
+				}
+
+				else if (comparison === 1) {
+					result.push(token);
+
+					if (move) tokenBuffer.splice(0, bufferPos + 1);
+
+					if (result.length === 1)
+						return result[0];
+					else return result;
+				}
+
+			}
+
+
+		}
+
+
+
+		this.match = function() {
+			addExpression.call(this, arguments, false);
+		};
+
+		this.ignore = function() {
+			addExpression.call(this, arguments, true);
+		};
+
+		this.tokenize = function(input) {
+			tokenBuffer = [];
+			inputString = input;
+			inputLength = input.length;
+			tokenRegExp = new RegExp(tokenRegExp.join('|'), 'g');
+		};
+
+
+
 
 		function readCharacter(move) {
 
 			var pos = (
 				tokenBuffer.length ?
 				tokenBuffer[0].pos :
-				tokenDefinitions[0].lastIndex
+				tokenRegExp.lastIndex
 			);
 
 			var ch = (
-				pos === inputStringLength ?
+				pos === inputLength ?
 				'EOF' : inputString[pos]
 			);
 
@@ -78,9 +224,9 @@ define(function() {
 				return;
 			}
 
-			if (move && pos < inputStringLength) {
+			if (move && pos < inputLength) {
 				tokenBuffer = [];
-				tokenDefinitions[0].lastIndex =
+				tokenRegExp.lastIndex =
 				pos + 1;
 			}
 
@@ -88,143 +234,41 @@ define(function() {
 		}
 
 
-		this.addToken = function() {
-
-			var tokenName = null, expression;
-
-			if (arguments.length === 0) return;
-
-			if (arguments.length === 1) {
-				expression = arguments[0];
-			}
-
-			else if (arguments.length > 1) {
-				tokenName = arguments[0];
-				expression = arguments[1];
-			}
-
-			// if (!isString(tokenName)) return;
-			// tokenName to uppercase?
-
-
-			if (isRegExp(expression)) {
-				expression = expression.toString();
-				expression = expression.slice(1, -1);
-			} else expression = escapeRegExp(expression);
-
-
-			// if (!isString(expression)) return;
-
-			var ignore = false;
-
-			if (tokenName && tokenName[0] === '@') {
-				ignore = true;
-				tokenName = tokenName.substr(1);
-			}
-
-			tokenDefinitions[0].push('(' + expression + ')');
-			tokenDefinitions.push([ignore, tokenName]);
-
-		};
-
-
-
-		this.tokenize = function(input) {
-			tokenBuffer = [];
-			inputString = input;
-			inputStringLength = input.length;
-			tokenDefinitions[0] = new RegExp(
-				tokenDefinitions[0].join('|'), 'g'
-			);
-		};
-
-
 
 
 
 		this.getFragment = function() {
-			return readUntil({ignore: false}, false).value;
+			for (var c = 0; c < tokenBuffer.length; c++) {
+				if (tokenBuffer[c].ignore) continue;
+				return tokenBuffer[c].value || tokenBuffer[c].type;
+			}
 		};
 
 		this.getLineNumber = function() {
-			var code, start = -1, lineNumber = 1,
-				end = readUntil({ignore: false}, false).pos;
-			while (++start < end) {
-				code = inputString.charCodeAt(start);
-				if (code === 10 || code === 13) lineNumber++;
+			var code, start = -1, lineNumber = 1;
+
+			for (var c = 0; c < tokenBuffer.length; c++) {
+				if (tokenBuffer[c].ignore) continue;
+				while (++start < tokenBuffer[c].pos) {
+					code = inputString.charCodeAt(start);
+					if (code === 10 || code === 13) lineNumber++;
+				}
+				return lineNumber;
 			}
-			return lineNumber;
+
 		};
 
 
 
-
-
-		function testAhead(token, frag) {
-
-			if (frag instanceof Array) {
-				for (var c = 0; c < frag.length; c++) {
-					if (!testAhead(token, frag[c])) continue;
-					return true;
-				}
-			}
-
-			else {
-				var key = 'value';
-				if (frag[0] === '@') {
-					key = 'type';
-					frag = frag.slice(1);
-				}
-				// console.info(key, token[key], frag);
-				return (token[key] === frag);
-			}
-
-
-		}
 
 
 		this.test = function(selector) {
-			var selector = Array.prototype.slice.call(arguments);
 
-			var notIgnoredTokensCount = 0;
-			for (var c = 0; c < tokenBuffer.length; c++) {
-				if (tokenBuffer[c].ignore) continue;
-				notIgnoredTokensCount++;
-			}
+			return !!consume(
+				Array.prototype.slice.call(arguments),
+				false
+			);
 
-			for (var c = 0; c < selector.length - notIgnoredTokensCount; c++) {
-				readTokens();
-			}
-
-			var offset = 0;
-			for (var c = 0; c < tokenBuffer.length; c++) {
-
-				var token = tokenBuffer[c],
-					frag = selector[offset];
-
-
-				if (!testAhead(token, frag)) {
-
-					if (token.ignore) {
-						// console.info('FAIL but continue');
-						continue;
-					}
-
-					else {
-						// console.info('FAIL and return');
-						return;
-					}
-				} else {
-					// console.info('SUCCESS');
-					offset++;
-					if (offset >= selector.length) break;
-				}
-			}
-
-			// console.info(c);
-			// dump(tokenBuffer);
-
-			return 'true?';
 
 
 		};
@@ -233,65 +277,11 @@ define(function() {
 
 
 
-		this.next = function(selector) {
-			var resultArr = [];
-			var selector = Array.prototype.slice.call(arguments);
-
-			if (!selector.length) {
-				if (!tokenBuffer.length)
-					readTokens();
-				while (tokenBuffer.length) {
-					var token = tokenBuffer.shift();
-					if (!token.ignore) return token;
-				}
-			}
-
-
-			var notIgnoredTokensCount = 0;
-
-			for (var c = 0; c < tokenBuffer.length; c++) {
-				if (tokenBuffer[c].ignore) continue;
-				notIgnoredTokensCount++;
-			}
-
-			for (var c = 0; c < selector.length - notIgnoredTokensCount; c++) {
-				readTokens();
-			}
-
-			var offset = 0;
-			for (var c = 0; c < tokenBuffer.length; c++) {
-
-				var token = tokenBuffer[c],
-					frag = selector[offset];
-
-
-				if (!testAhead(token, frag)) {
-
-					if (token.ignore) {
-						// console.info('FAIL but continue');
-						continue;
-					}
-
-					else {
-						// console.info('FAIL and return');
-						return;
-					}
-				} else {
-					resultArr.push(token);
-					// console.info('SUCCESS');
-					offset++;
-					if (offset >= selector.length) break;
-				}
-			}
-
-			// console.info(c);
-			tokenBuffer.splice(0, c + 1);
-			// dump(resultArr);
-
-			if (resultArr.length === 1)
-				return resultArr[0];
-			else return resultArr;
-
+		this.next = function() {
+			return consume(
+				Array.prototype.slice.call(arguments),
+				true
+			);
 		};
 
 
@@ -326,6 +316,9 @@ define(function() {
 
 
 	}
+
+	Tokenizer.T_EOF = T_EOF;
+	Tokenizer.T_ERR = T_ERR;
 
 
 	return Tokenizer;

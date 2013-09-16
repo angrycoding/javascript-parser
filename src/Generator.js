@@ -218,29 +218,29 @@ define('Constants', function(Constants) {
 			case Constants.UDEC: return '--' + processNode(node[1]);
 			case Constants.UADD: return '+' + processNode(node[1]);
 			case Constants.USUB: return '-' + processNode(node[1]);
-			case Constants.BIT_NOT: return '~' + processNode(node[1]);
+			case Constants.BNOT: return '~' + processNode(node[1]);
 			case Constants.NOT: return '!' + processNode(node[1]);
 			case Constants.MUL: return processNode(node[1]) + ' * ' + processNode(node[2]);
 			case Constants.DIV: return processNode(node[1]) + ' / ' + processNode(node[2]);
 			case Constants.MOD: return processNode(node[1]) + ' % ' + processNode(node[2]);
 			case Constants.ADD: return processNode(node[1]) + ' + ' + processNode(node[2]);
 			case Constants.SUB: return processNode(node[1]) + ' - ' + processNode(node[2]);
-			case Constants.BIT_SHL: return processNode(node[1]) + ' << ' + processNode(node[2]);
-			case Constants.BIT_SHR: return processNode(node[1]) + ' >> ' + processNode(node[2]);
-			case Constants.BIT_SHRZ: return processNode(node[1]) + ' >>> ' + processNode(node[2]);
+			case Constants.BSHL: return processNode(node[1]) + ' << ' + processNode(node[2]);
+			case Constants.BSHR: return processNode(node[1]) + ' >> ' + processNode(node[2]);
+			case Constants.BSHRZ: return processNode(node[1]) + ' >>> ' + processNode(node[2]);
 			case Constants.INSTANCEOF: return processNode(node[1]) + ' instanceof ' + processNode(node[2]);
 			case Constants.IN: return processNode(node[1]) + ' in ' + processNode(node[2]);
-			case Constants.LESS_THAN: return processNode(node[1]) + ' < ' + processNode(node[2]);
-			case Constants.GREATER_THAN: return processNode(node[1]) + ' > ' + processNode(node[2]);
-			case Constants.LESS_OR_EQUAL: return processNode(node[1]) + ' <= ' + processNode(node[2]);
-			case Constants.GREATER_OR_EQUAL: return processNode(node[1]) + ' >= ' + processNode(node[2]);
-			case Constants.EQUAL: return processNode(node[1]) + ' == ' + processNode(node[2]);
-			case Constants.STRICT_EQUAL: return processNode(node[1]) + ' === ' + processNode(node[2]);
-			case Constants.NOT_EQUAL: return processNode(node[1]) + ' != ' + processNode(node[2]);
-			case Constants.STRICT_NOT_EQUAL: return processNode(node[1]) + ' !== ' + processNode(node[2]);
-			case Constants.BIT_AND: return processNode(node[1]) + ' & ' + processNode(node[2]);
-			case Constants.BIT_XOR: return processNode(node[1]) + ' ^ ' + processNode(node[2]);
-			case Constants.BIT_OR: return processNode(node[1]) + ' | ' + processNode(node[2]);
+			case Constants.LT: return processNode(node[1]) + ' < ' + processNode(node[2]);
+			case Constants.GT: return processNode(node[1]) + ' > ' + processNode(node[2]);
+			case Constants.LE: return processNode(node[1]) + ' <= ' + processNode(node[2]);
+			case Constants.GE: return processNode(node[1]) + ' >= ' + processNode(node[2]);
+			case Constants.EQ: return processNode(node[1]) + ' == ' + processNode(node[2]);
+			case Constants.SEQ: return processNode(node[1]) + ' === ' + processNode(node[2]);
+			case Constants.NEQ: return processNode(node[1]) + ' != ' + processNode(node[2]);
+			case Constants.SNEQ: return processNode(node[1]) + ' !== ' + processNode(node[2]);
+			case Constants.BAND: return processNode(node[1]) + ' & ' + processNode(node[2]);
+			case Constants.BXOR: return processNode(node[1]) + ' ^ ' + processNode(node[2]);
+			case Constants.BOR: return processNode(node[1]) + ' | ' + processNode(node[2]);
 			case Constants.AND: return processNode(node[1]) + ' && ' + processNode(node[2]);
 			case Constants.OR: return processNode(node[1]) + ' || ' + processNode(node[2]);
 
@@ -250,13 +250,13 @@ define('Constants', function(Constants) {
 			case Constants.ASSIGN_MOD: return processNode(node[1]) + ' %= ' + processNode(node[2]);
 			case Constants.ASSIGN_ADD: return processNode(node[1]) + ' += ' + processNode(node[2]);
 			case Constants.ASSIGN_SUB: return processNode(node[1]) + ' -= ' + processNode(node[2]);
-			case Constants.ASSIGN_BIT_SHL: return processNode(node[1]) + ' <<= ' + processNode(node[2]);
-			case Constants.ASSIGN_BIT_SHR: return processNode(node[1]) + ' >>= ' + processNode(node[2]);
-			case Constants.ASSIGN_BIT_SHRZ: return processNode(node[1]) + ' >>>= ' + processNode(node[2]);
-			case Constants.ASSIGN_BIT_AND: return processNode(node[1]) + ' &= ' + processNode(node[2]);
+			case Constants.ASSIGN_BSHL: return processNode(node[1]) + ' <<= ' + processNode(node[2]);
+			case Constants.ASSIGN_BSHR: return processNode(node[1]) + ' >>= ' + processNode(node[2]);
+			case Constants.ASSIGN_BSHRZ: return processNode(node[1]) + ' >>>= ' + processNode(node[2]);
+			case Constants.ASSIGN_BAND: return processNode(node[1]) + ' &= ' + processNode(node[2]);
 
-			case Constants.ASSIGN_BIT_XOR: return processNode(node[1]) + ' ^= ' + processNode(node[2]);
-			case Constants.ASSIGN_BIT_OR: return processNode(node[1]) + ' |= ' + processNode(node[2]);
+			case Constants.ASSIGN_BXOR: return processNode(node[1]) + ' ^= ' + processNode(node[2]);
+			case Constants.ASSIGN_BOR: return processNode(node[1]) + ' |= ' + processNode(node[2]);
 
 			case Constants.FUNCTION: return ProcessFunction(node);
 
