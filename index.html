@@ -360,63 +360,12 @@
 
 			krang({cache: false, debug: false}).require([
 				'src/Parser',
-				'src/Generator',
-				'../krang4/src/Utils'
-			], function(Parser, Generator, Utils) {
+				'src/Generator'
+			], function(Parser, Generator) {
 
-				var callbacks = {};
-
-				window.onmessage = function(event) {
-					var data = event.data;
-					var requestHash = data.hash;
-					var requestData = data.data;
-					var callback = callbacks[requestHash];
-					delete callbacks[requestHash];
-					callback(requestData);
-				};
-
-
-				function getHTMLProxy(proxyURI, requestURI, ret) {
-					var requestHash = Utils.uniqueId();
-					callbacks[requestHash] = ret;
-					var iframe = document.createElement('iframe');
-					iframe.src = proxyURI;
-					iframe.onload = function() {
-						iframe.contentWindow.postMessage({
-							hash: requestHash,
-							uri: requestURI
-						}, '*');
-					};
-					document.body.appendChild(iframe);
-				}
-
-
-				var proxies = [
-					'http://foobar.test.loc/proxy.html',
-					'https://raw.github.com/angrycoding/javascript-parser/master/testproxy.html'
-				];
-
-				for (var c = 0; c < proxies.length; c++) {
-					var proxyUrl = Utils.uri.parse(proxies[c]);
-					proxies[proxyUrl.authority] = proxies[c];
-				}
-
-
-				function getFile(url, ret) {
-					var proxy = Utils.uri.parse(url);
-					if (proxy = proxies[proxy.authority]) {
-						getHTMLProxy(proxy, url, ret);
-					} else console.error('no proxy for', url);
-				}
-
-
-
-				getFile('https://raw.github.com/angrycoding/javascript-parser/master/src/Constants.js', function(data) {
-					console.info(1);
-					// var AST = Parser(data, 'script.js');
-					// dump(AST);
-				});
-
+				var AST = Parser(script);
+				dump(AST);
+				console.info(Generator(AST));
 
 			});
 
