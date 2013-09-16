@@ -359,11 +359,10 @@
 			var script = document.getElementById('script').innerHTML;
 
 			krang({cache: false, debug: false}).require([
-				'src/Tokenizer2',
 				'src/Parser',
 				'src/Generator',
 				'../krang4/src/Utils'
-			], function(Tokenizer, Parser, Generator, Utils) {
+			], function(Parser, Generator, Utils) {
 
 				var callbacks = {};
 
@@ -394,7 +393,7 @@
 
 				var proxies = [
 					'http://foobar.test.loc/proxy.html',
-					'https://raw.github.com/angrycoding/histone/master/src/Utils.js'
+					'https://raw.github.com/angrycoding/javascript-parser/master/testproxy.html'
 				];
 
 				for (var c = 0; c < proxies.length; c++) {
@@ -412,9 +411,10 @@
 
 
 
-				getFile('https://raw.github.com/angrycoding/histone/master/src/Histone.js', function(data) {
-					var AST = Parser(data, 'script.js');
-					dump(AST);
+				getFile('https://raw.github.com/angrycoding/javascript-parser/master/src/Constants.js', function(data) {
+					console.info(1);
+					// var AST = Parser(data, 'script.js');
+					// dump(AST);
 				});
 
 
