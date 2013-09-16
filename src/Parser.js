@@ -67,37 +67,35 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	tokenizer.match(':');
 	tokenizer.match(';');
 
-	tokenizer.match('KEYWORD', /new\b/, 'new');
-	tokenizer.match('KEYWORD', /if\b/, 'if');
-	tokenizer.match('KEYWORD', /case\b/, 'case');
-	tokenizer.match('KEYWORD', /switch\b/, 'switch');
-	tokenizer.match('KEYWORD', /default\b/, 'default');
-	tokenizer.match('KEYWORD', /else\b/, 'else');
-	tokenizer.match('KEYWORD', /do\b/, 'do');
-	tokenizer.match('KEYWORD', /while\b/, 'while');
-	tokenizer.match('KEYWORD', /try\b/, 'try');
-	tokenizer.match('KEYWORD', /catch\b/, 'catch');
-	tokenizer.match('KEYWORD', /throw\b/, 'throw');
-	tokenizer.match('KEYWORD', /finally\b/, 'finally');
-	tokenizer.match('KEYWORD', /for\b/, 'for');
-	tokenizer.match('KEYWORD', /with\b/, 'with');
-	tokenizer.match('KEYWORD', /break\b/, 'break');
-	tokenizer.match('KEYWORD', /var\b/, 'var');
-	tokenizer.match('KEYWORD', /continue\b/, 'continue');
-	tokenizer.match('KEYWORD', /return\b/, 'return');
-	tokenizer.match('KEYWORD', /function\b/, 'function');
 	tokenizer.match('KEYWORD', /in\b/, 'in');
+	tokenizer.match('KEYWORD', /if\b/, 'if');
+	tokenizer.match('KEYWORD', /do\b/, 'do');
+	tokenizer.match('KEYWORD', /new\b/, 'new');
+	tokenizer.match('KEYWORD', /for\b/, 'for');
+	tokenizer.match('KEYWORD', /try\b/, 'try');
+	tokenizer.match('KEYWORD', /var\b/, 'var');
+	tokenizer.match('KEYWORD', /case\b/, 'case');
+	tokenizer.match('KEYWORD', /else\b/, 'else');
+	tokenizer.match('KEYWORD', /with\b/, 'with');
 	tokenizer.match('KEYWORD', /void\b/, 'void');
 	tokenizer.match('KEYWORD', /null\b/, 'null');
 	tokenizer.match('KEYWORD', /this\b/, 'this');
 	tokenizer.match('KEYWORD', /true\b/, 'true');
 	tokenizer.match('KEYWORD', /false\b/, 'false');
+	tokenizer.match('KEYWORD', /throw\b/, 'throw');
+	tokenizer.match('KEYWORD', /catch\b/, 'catch');
+	tokenizer.match('KEYWORD', /while\b/, 'while');
+	tokenizer.match('KEYWORD', /break\b/, 'break');
 	tokenizer.match('KEYWORD', /typeof\b/, 'typeof');
+	tokenizer.match('KEYWORD', /switch\b/, 'switch');
+	tokenizer.match('KEYWORD', /return\b/, 'return');
 	tokenizer.match('KEYWORD', /delete\b/, 'delete');
-	tokenizer.match('KEYWORD', /instanceof\b/, 'instanceof');
+	tokenizer.match('KEYWORD', /default\b/, 'default');
+	tokenizer.match('KEYWORD', /finally\b/, 'finally');
+	tokenizer.match('KEYWORD', /continue\b/, 'continue');
+	tokenizer.match('KEYWORD', /function\b/, 'function');
 	tokenizer.match('KEYWORD', /debugger\b/, 'debugger');
-
-	tokenizer.match('ID', /[_$a-zA-Z\xA0-\uFFFF][_$a-zA-Z0-9\xA0-\uFFFF]*/);
+	tokenizer.match('KEYWORD', /instanceof\b/, 'instanceof');
 
 	tokenizer.match('STRING', /'(?:[^\'\\]|\\.)*'/);
 	tokenizer.match('STRING', /"(?:[^\"\\]|\\.)*"/);
@@ -105,18 +103,36 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	tokenizer.match('DECIMAL', /(?:[0-9]*\.)?[0-9]+[eE][+-]?[0-9]+/);
 	tokenizer.match('DECIMAL', /[0-9]*\.[0-9]+/);
 	tokenizer.match('DECIMAL', /[0-9]+/);
+	tokenizer.match('ID', /[_$a-zA-Z\xA0-\uFFFF][_$a-zA-Z0-9\xA0-\uFFFF]*/);
 
 
-	function ParseError(expected, found) {
+	function ParseError(expected) {
 
-		var found = (found || tokenizer.getFragment());
+		if (!(this instanceof arguments.callee) ) {
+			var args = Array.prototype.slice.call(arguments);
+			if (args.length) throw new ParseError(args);
+			throw new ParseError([]);
+		}
+
+		var errorMessage;
+		var found = tokenizer.getFragment();
 		var lineNumber = tokenizer.getLineNumber();
 
-		var errorMessage = (
-			fileName + '(' + lineNumber +
-			') Syntax error, "' + expected +
-			'" expected, but "' + found + '" found'
-		);
+		if (!expected.length) {
+			errorMessage = (
+				fileName + '(' + lineNumber + ') ' +
+				'Syntax error: unexpected token ' + found
+			);
+		} else {
+
+			expected = expected.join('" or "');
+
+			errorMessage = (
+				fileName + '(' + lineNumber +
+				') Syntax error: expected "' + expected +
+				'" but "' + found + '" found'
+			);
+		}
 
 		return {
 			file: fileName,
@@ -128,35 +144,6 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 			}
 		};
 	}
-
-	function UnexpectedToken() {
-
-		var token = tokenizer.getFragment(),
-			line = tokenizer.getLineNumber();
-
-		var errorMessage = (
-			fileName + '(' + line + ') ' +
-			'Syntax error: unexpected token ' + token
-		);
-
-		return {
-			line: line,
-			token: token,
-			file: fileName,
-			toString: function() {
-				return errorMessage;
-			}
-		};
-	}
-
-	function parseError(expected, found) {
-		var length = arguments.length;
-		if (length === 0) throw new UnexpectedToken();
-		else throw new ParseError(expected, found);
-	}
-
-
-
 
 	function escapeString(string) {
 		var string = string.slice(1, -1);
@@ -215,7 +202,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		}
 
 		if (!tokenizer.next('/')) {
-			parseError('/UNTERMINATED');
+			ParseError('/UNTERMINATED');
 
 		}
 
@@ -232,7 +219,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		if (flags) {
 			flags = flags.value;
 			if (!validRegexpFlags.test(flags))
-				parseError('INVALID:' + flags);
+				ParseError('INVALID:' + flags);
 			result.push(flags);
 		}
 
@@ -247,16 +234,14 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 			if (tokenizer.test(']')) break;
 			result.push(AssignmentExpression());
 			if (tokenizer.test(']')) break;
-			if (!tokenizer.next(','))
-				parseError(', or ]');
+			if (!tokenizer.next(',')) ParseError(',', ']');
 		}
-		if (!tokenizer.next(']')) parseError(']');
+		if (!tokenizer.next(']')) ParseError(']');
 		return result;
 	}
 
 	function ObjectLiteral() {
 		var key, result = [Constants.OBJECT];
-
 		if (!tokenizer.test('}')) do {
 			// @todo: escape string literal?
 			// @todo: convert DECIMAL values to string?
@@ -266,26 +251,25 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 				tokenizer.next(tokenizer.STRING) ||
 				tokenizer.next(tokenizer.DECIMAL)
 			)) {
-				if (!tokenizer.next(':')) parseError(':');
+				if (!tokenizer.next(':')) ParseError(':');
 				result.push([String(key.value), AssignmentExpression()]);
 			} else break;
 
 		} while (tokenizer.next(','));
-
-		if (!tokenizer.next('}')) parseError('}');
+		if (!tokenizer.next('}')) ParseError('}');
 		return result;
 	}
 
 	function FunctionExpression() {
 		var args = [], name = tokenizer.next(tokenizer.ID);
 		name = (name ? name.value : null);
-		if (!tokenizer.next('(')) parseError('(');
+		if (!tokenizer.next('(')) ParseError('(');
 		if (!tokenizer.test(')')) do {
 			var arg = tokenizer.next(tokenizer.ID);
-			if (!arg) parseError('Identifier');
+			if (!arg) ParseError('IDENTIFIER', ')');
 			args.push(arg.value);
 		} while (tokenizer.next(','));
-		if (!tokenizer.next(')')) parseError(')');
+		if (!tokenizer.next(')')) ParseError(')');
 		return [Constants.FUNCTION, name, args, Block(true)];
 	}
 
@@ -311,8 +295,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 		if (tokenizer.next('(')) {
 			var expression = Expression();
-			if (!tokenizer.next(')'))
-				parseError(')');
+			if (!tokenizer.next(')')) ParseError(')');
 			return [Constants.PARENS, expression];
 		}
 
@@ -321,13 +304,13 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		if (tokenizer.next('{')) return ObjectLiteral();
 		if (tokenizer.next('function')) return FunctionExpression();
 
-		if (!(flags & SILENT_FLAG)) parseError('EXPRESSION');
+		if (!(flags & SILENT_FLAG)) ParseError('EXPRESSION');
 	}
 
 	function AllocationExpression(flags) {
-		if (tokenizer.next('new')) {
+		if (tokenizer.next('new'))
 			return [Constants.NEW, CallExpression()];
-		} else return PrimaryExpression(flags);
+		else return PrimaryExpression(flags);
 	}
 
 	function CallExpression(flags) {
@@ -339,7 +322,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 			if (tokenizer.next('.')) {
 				if (!tokenizer.test(tokenizer.ID) &&
 					!tokenizer.test(tokenizer.KEYWORD)) {
-					parseError('identifier');
+					ParseError('identifier');
 				}
 				if (left[0] !== Constants.SELECTOR)
 					left = [Constants.SELECTOR, [left]];
@@ -347,24 +330,21 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 			}
 
 			else if (tokenizer.next('[')) {
-				if (tokenizer.next(']'))
-					parseError('expression', '[]');
+				if (tokenizer.next(']')) ParseError('EXPRESSION');
 				if (left[0] !== Constants.SELECTOR)
 					left = [Constants.SELECTOR, [left]];
 				left[1].push(Expression());
-				if (!tokenizer.next(']'))
-					parseError(']');
+				if (!tokenizer.next(']')) ParseError(']');
 			}
 
 			else if (tokenizer.next('(')) {
 				left = [Constants.CALL, left, []];
 				if (!tokenizer.test(')')) do {
 					var expression = AssignmentExpression();
-					if (!expression) parseError('expression');
+					if (!expression) ParseError('expression');
 					left[2].push(expression);
 				} while (tokenizer.next(','));
-				if (!tokenizer.next(')'))
-					parseError(')');
+				if (!tokenizer.next(')')) ParseError(')');
 			}
 
 			else break;
@@ -542,7 +522,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		if (expression && tokenizer.next('?')) {
 			expression = [Constants.TERNARY, expression];
 			expression.push(AssignmentExpression());
-			if (!tokenizer.next(':')) parseError(':');
+			if (!tokenizer.next(':')) ParseError(':');
 			expression.push(AssignmentExpression(flags &~ SILENT_FLAG));
 			return expression;
 		}
@@ -595,11 +575,9 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 
 	function BracketExpression() {
-		if (!tokenizer.next('('))
-			parseError('(');
+		if (!tokenizer.next('(')) ParseError('(');
 		var expression = Expression();
-		if (!tokenizer.next(')'))
-			parseError(')');
+		if (!tokenizer.next(')')) ParseError(')');
 		return expression;
 	}
 
@@ -610,7 +588,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 			Constants.DO_LOOP, Statement(true), (
 				tokenizer.next('while') &&
 				BracketExpression()
-			) || parseError('while')
+			) || ParseError('while')
 		];
 	}
 
@@ -648,19 +626,16 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		if (!tokenizer.next('try')) return;
 		var result = [Block(true)];
 		if (tokenizer.next('catch')) {
-			if (!tokenizer.next('('))
-				parseError('(');
+			if (!tokenizer.next('(')) ParseError('(');
 			var varName = tokenizer.next(tokenizer.ID);
 			if (!varName) parseError('identifier');
 			result.push(varName.value);
-			if (!tokenizer.next(')'))
-				parseError(')');
+			if (!tokenizer.next(')')) ParseError(')');
 			result.push(Block(true));
 		}
 		if (tokenizer.next('finally'))
 			result.push(Block(true));
-		if (result.length < 2)
-			parseError('catch or finally');
+		if (result.length < 2) ParseError('catch', 'finally');
 		return [Constants.TRY, result];
 	}
 
@@ -668,7 +643,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	// simplify!!!!
 	function ForStatement() {
 		if (!tokenizer.next('for')) return;
-		if (!tokenizer.next('(')) parseError('(');
+		if (!tokenizer.next('(')) ParseError('(');
 
 		var result = (
 			tokenizer.test('var') ?
@@ -680,14 +655,14 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		if (tokenizer.next(';')) {
 			result = [Constants.FOR_LOOP, result];
 			result.push(Expression(SILENT_FLAG) || ['EMPTY']);
-			if (!tokenizer.next(';')) parseError(';');
+			if (!tokenizer.next(';')) ParseError(';');
 			result.push(Expression(SILENT_FLAG) || ['EMPTY']);
 		}
 
 		else if (tokenizer.test('in')) {
 
 			if (result[0] === Constants.VAR && result.length > 2) {
-				parseError(';');
+				ParseError(';');
 			} else tokenizer.next();
 
 
@@ -695,7 +670,9 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 			result.push(Expression());
 		}
 
-		if (!tokenizer.next(')')) parseError(')');
+		else ParseError(';', 'in');
+
+		if (!tokenizer.next(')')) ParseError(')');
 		result.push(Statement(true));
 		return result;
 
@@ -706,22 +683,22 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		if (!tokenizer.next('switch')) return;
 		var expression = BracketExpression();
 		var caseStatements = [], defaultStatements;
-		if (!tokenizer.next('{')) parseError('{');
+		if (!tokenizer.next('{')) ParseError('{');
 		if (!tokenizer.test('}')) do {
 
 			if (tokenizer.next('case')) {
 				var condition = Expression();
-				if (!tokenizer.next(':')) parseError(':');
+				if (!tokenizer.next(':')) ParseError(':');
 				caseStatements.push([condition, Statements()])
 			} else if (tokenizer.next('default')) {
-				if (!tokenizer.next(':')) parseError(':');
-				if (defaultStatements) parseError('more than one default');
+				if (!tokenizer.next(':')) ParseError(':');
+				if (defaultStatements) ParseError('more than one default');
 				defaultStatements = Statements();
 			} else break;
 
 		} while (!tokenizer.test(Tokenizer.T_EOF));
 
-		if (!tokenizer.next('}')) parseError('}');
+		if (!tokenizer.next('}')) ParseError('}');
 
 		return [Constants.SWITCH, expression, caseStatements, defaultStatements];
 	}
@@ -730,17 +707,11 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 
 	function Block(required) {
-
-		// save current position
-
 		if (tokenizer.next('{')) {
-
 			var statements = Statements();
-			if (!tokenizer.next('}'))
-				parseError('}');
+			if (!tokenizer.next('}')) ParseError('}');
 			return [Constants.BLOCK, statements];
-
-		} else if (required) parseError('{...}');
+		} else if (required) ParseError('{...}');
 	}
 
 
@@ -750,7 +721,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 			var variable, variables = [Constants.VAR];
 			do {
 				variable = tokenizer.next(tokenizer.ID);
-				if (!variable) parseError('identifier');
+				if (!variable) ParseError('identifier');
 				variable = [variable.value];
 				if (tokenizer.next('='))
 					variable.push(AssignmentExpression(flags));
@@ -764,7 +735,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	function ThrowStatement() {
 		if (tokenizer.next('throw')) {
 			if (tokenizer.next(tokenizer.EOL))
-				parseError('Illegal newline after throw');
+				ParseError('Illegal newline after throw');
 			return [Constants.THROW, Expression()];
 		}
 	}
@@ -831,14 +802,14 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		else if (result = ThrowStatement());
 		else if (result = TryStatement()) return result;
 
-		else if (required) parseError('STATEMENT');
+		else if (required) ParseError('STATEMENT');
 
 		if (!tokenizer.next(';') &&
 			!tokenizer.test('}') &&
 			!tokenizer.test(Tokenizer.T_ERR) &&
 			!tokenizer.test(Tokenizer.T_EOF) &&
 			!tokenizer.next(tokenizer.EOL)) {
-			parseError(';');
+			ParseError(';');
 		}
 
 		return result;
@@ -860,7 +831,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 		var statements = Statements();
 		if (!tokenizer.test(Tokenizer.T_EOF))
-			parseError();
+			ParseError();
 		return statements;
 
 	}
