@@ -1,6 +1,10 @@
 {
 	"name": "javascript-parser",
 	"version": "0.0.2",
+	"repository": {
+		"type": "git",
+		"url" : "https://github.com/angrycoding/javascript-parser.git"
+	},
 	"scripts": {
 		"test": "node testrunner.js"
 	}
