@@ -201,7 +201,10 @@ define(function() {
 			tokenBuffer = [];
 			inputString = input;
 			inputLength = input.length;
-			tokenRegExp = new RegExp(tokenRegExp.join('|'), 'g');
+			if (tokenRegExp instanceof Array) {
+				tokenRegExp = tokenRegExp.join('|');
+				tokenRegExp = new RegExp(tokenRegExp, 'g');
+			} else tokenRegExp.lastIndex = 0;
 		};
 
 

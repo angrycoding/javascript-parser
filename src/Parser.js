@@ -9,6 +9,44 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	var fileName = 'FILENAME';
 	var tokenizer = new Tokenizer();
 
+	tokenizer.match('KEYWORD', /in\b/, 'in');
+	tokenizer.match('KEYWORD', /if\b/, 'if');
+	tokenizer.match('KEYWORD', /do\b/, 'do');
+	tokenizer.match('KEYWORD', /new\b/, 'new');
+	tokenizer.match('KEYWORD', /for\b/, 'for');
+	tokenizer.match('KEYWORD', /try\b/, 'try');
+	tokenizer.match('KEYWORD', /var\b/, 'var');
+	tokenizer.match('KEYWORD', /case\b/, 'case');
+	tokenizer.match('KEYWORD', /else\b/, 'else');
+	tokenizer.match('KEYWORD', /with\b/, 'with');
+	tokenizer.match('KEYWORD', /void\b/, 'void');
+	tokenizer.match('KEYWORD', /null\b/, 'null');
+	tokenizer.match('KEYWORD', /this\b/, 'this');
+	tokenizer.match('KEYWORD', /true\b/, 'true');
+	tokenizer.match('KEYWORD', /false\b/, 'false');
+	tokenizer.match('KEYWORD', /throw\b/, 'throw');
+	tokenizer.match('KEYWORD', /catch\b/, 'catch');
+	tokenizer.match('KEYWORD', /while\b/, 'while');
+	tokenizer.match('KEYWORD', /break\b/, 'break');
+	tokenizer.match('KEYWORD', /typeof\b/, 'typeof');
+	tokenizer.match('KEYWORD', /switch\b/, 'switch');
+	tokenizer.match('KEYWORD', /return\b/, 'return');
+	tokenizer.match('KEYWORD', /delete\b/, 'delete');
+	tokenizer.match('KEYWORD', /default\b/, 'default');
+	tokenizer.match('KEYWORD', /finally\b/, 'finally');
+	tokenizer.match('KEYWORD', /continue\b/, 'continue');
+	tokenizer.match('KEYWORD', /function\b/, 'function');
+	tokenizer.match('KEYWORD', /debugger\b/, 'debugger');
+	tokenizer.match('KEYWORD', /instanceof\b/, 'instanceof');
+
+	tokenizer.match('STRING', /'(?:[^\'\\]|\\.)*'/);
+	tokenizer.match('STRING', /"(?:[^\"\\]|\\.)*"/);
+	tokenizer.match('HEX', /0[xX][0-9A-Fa-f]+/);
+	tokenizer.match('DECIMAL', /(?:[0-9]*\.)?[0-9]+[eE][+-]?[0-9]+/);
+	tokenizer.match('DECIMAL', /[0-9]*\.[0-9]+/);
+	tokenizer.match('DECIMAL', /[0-9]+/);
+	tokenizer.match('ID', /[_$a-zA-Z\xA0-\uFFFF][_$a-zA-Z0-9\xA0-\uFFFF]*/);
+
 	tokenizer.ignore(/[\x09\x20]+/);
 	tokenizer.ignore(/\/\/[^\x0A\x0D]*/);
 	tokenizer.ignore(/\/\*(?:.|[\n\r])*\*\//);
@@ -66,45 +104,6 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	tokenizer.match(',');
 	tokenizer.match(':');
 	tokenizer.match(';');
-
-	tokenizer.match('KEYWORD', /in\b/, 'in');
-	tokenizer.match('KEYWORD', /if\b/, 'if');
-	tokenizer.match('KEYWORD', /do\b/, 'do');
-	tokenizer.match('KEYWORD', /new\b/, 'new');
-	tokenizer.match('KEYWORD', /for\b/, 'for');
-	tokenizer.match('KEYWORD', /try\b/, 'try');
-	tokenizer.match('KEYWORD', /var\b/, 'var');
-	tokenizer.match('KEYWORD', /case\b/, 'case');
-	tokenizer.match('KEYWORD', /else\b/, 'else');
-	tokenizer.match('KEYWORD', /with\b/, 'with');
-	tokenizer.match('KEYWORD', /void\b/, 'void');
-	tokenizer.match('KEYWORD', /null\b/, 'null');
-	tokenizer.match('KEYWORD', /this\b/, 'this');
-	tokenizer.match('KEYWORD', /true\b/, 'true');
-	tokenizer.match('KEYWORD', /false\b/, 'false');
-	tokenizer.match('KEYWORD', /throw\b/, 'throw');
-	tokenizer.match('KEYWORD', /catch\b/, 'catch');
-	tokenizer.match('KEYWORD', /while\b/, 'while');
-	tokenizer.match('KEYWORD', /break\b/, 'break');
-	tokenizer.match('KEYWORD', /typeof\b/, 'typeof');
-	tokenizer.match('KEYWORD', /switch\b/, 'switch');
-	tokenizer.match('KEYWORD', /return\b/, 'return');
-	tokenizer.match('KEYWORD', /delete\b/, 'delete');
-	tokenizer.match('KEYWORD', /default\b/, 'default');
-	tokenizer.match('KEYWORD', /finally\b/, 'finally');
-	tokenizer.match('KEYWORD', /continue\b/, 'continue');
-	tokenizer.match('KEYWORD', /function\b/, 'function');
-	tokenizer.match('KEYWORD', /debugger\b/, 'debugger');
-	tokenizer.match('KEYWORD', /instanceof\b/, 'instanceof');
-
-	tokenizer.match('STRING', /'(?:[^\'\\]|\\.)*'/);
-	tokenizer.match('STRING', /"(?:[^\"\\]|\\.)*"/);
-	tokenizer.match('HEX', /0[xX][0-9A-Fa-f]+/);
-	tokenizer.match('DECIMAL', /(?:[0-9]*\.)?[0-9]+[eE][+-]?[0-9]+/);
-	tokenizer.match('DECIMAL', /[0-9]*\.[0-9]+/);
-	tokenizer.match('DECIMAL', /[0-9]+/);
-	tokenizer.match('ID', /[_$a-zA-Z\xA0-\uFFFF][_$a-zA-Z0-9\xA0-\uFFFF]*/);
-
 
 	function ParseError(expected) {
 
@@ -243,18 +242,17 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	function ObjectLiteral() {
 		var key, result = [Constants.OBJECT];
 		if (!tokenizer.test('}')) do {
-			// @todo: escape string literal?
-			// @todo: convert DECIMAL values to string?
-			if (key = (
-				tokenizer.next(tokenizer.ID) ||
-				tokenizer.next(tokenizer.KEYWORD) ||
-				tokenizer.next(tokenizer.STRING) ||
-				tokenizer.next(tokenizer.DECIMAL)
-			)) {
-				if (!tokenizer.next(':')) ParseError(':');
-				result.push([String(key.value), AssignmentExpression()]);
-			} else break;
-
+			if (key = tokenizer.next(tokenizer.STRING))
+				key = escapeString(key.value);
+			else if (key = tokenizer.next(tokenizer.DECIMAL))
+				key = String(parseFloat(key.value));
+			else if (key = tokenizer.next(tokenizer.ID))
+				key = key.value;
+			else if (key = tokenizer.next(tokenizer.KEYWORD))
+				key = key.value;
+			else break;
+			if (!tokenizer.next(':')) ParseError(':');
+			result.push([key, AssignmentExpression()]);
 		} while (tokenizer.next(','));
 		if (!tokenizer.next('}')) ParseError('}');
 		return result;
