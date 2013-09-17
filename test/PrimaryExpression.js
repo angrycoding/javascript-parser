@@ -126,11 +126,44 @@ define('../src/Constants', function(AST) {
 	},
 
 
-
+	// correctResult
 	{
 		"input": "(null)",
 		"expected": [[AST.PARENS, [AST.NULL]]]
-	}, {
+	},
+
+	// wrongResult
+	{
+		"input": "(this)",
+		"expected": [[AST.PARENS, [AST.NULL]]]
+	},
+
+	// correctException
+	{
+		"input": "(this",
+		"exception": {"expected": ")", "found": -1}
+	},
+
+	// wrongException
+	{
+		"input": "(this",
+		"exception": {"expected": "x)", "found": -1}
+	},
+
+	// unexpectedException
+	{
+		"input": "(this",
+		"expected": [[AST.PARENS, [AST.THIS]]]
+	},
+
+	// unexpectedSuccess
+	{
+		"input": "(this)",
+		"exception": {"expected": ")", "found": -1}
+	},
+
+
+	{
 		"input": "(this)",
 		"expected": [[AST.PARENS, [AST.THIS]]]
 	}, {

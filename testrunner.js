@@ -3,21 +3,58 @@ require('./krang.js')({
 	debug: false
 }).require(['src/Parser', 'test/test'], function(Parser, tests) {
 
+	function unexpectedSuccess(input, expectedException, actualResult) {
+		console.info('[ FAIL - unexpectedSuccess ]', input, expectedException, actualResult);
+	}
+
+	function unexpectedException(input, actualException) {
+		console.info('[ FAIL - unexpectedException ]', input, actualException);
+	}
+
+	function wrongException(input, expectedException, actualException) {
+		console.info('[ FAIL - wrongException ]', input, expectedException, actualException);
+	}
+
+	function wrongResult(input, expectedResult, actualResult) {
+		console.info('[ FAIL - wrongResult ]', input, expectedResult, actualResult);
+	}
+
+	function correctResult(input, actualResult) {
+		console.info('[ OK - correctResult ]', input, actualResult);
+	}
+
+	function correctException(input, actualException) {
+		console.info('[ OK - correctException ]', input, actualException);
+	}
+
+	function compareExceptions(expectedException, actualException) {
+		for (var key in expectedException)
+			if (actualException[key] !== expectedException[key])
+				return false;
+		return true;
+	}
+
 	function execTest(test) {
-		var output, input = test.input;
-		var expected = JSON.stringify(test.expected);
+
+		var testInput = test.input;
+		var expectedException = test.exception;
+		var testExpected = JSON.stringify(test.expected);
 
 
 		try {
-			output = Parser(input);
+			var output = Parser(testInput);
 			output = JSON.stringify(output);
-			if (output === expected) {
-				console.info('[ OK ]', input);
-			} else {
-				console.info('[ FAIL ]', output, expected);
-			}
-		} catch (exception) {
-			console.info(exception);
+			if (expectedException)
+				unexpectedSuccess(testInput, expectedException, output);
+			else if (output === testExpected)
+				correctResult(testInput, output);
+			else wrongResult(testInput, output, testExpected);
+		} catch (actualException) {
+			if (!expectedException)
+				unexpectedException(testInput, actualException);
+			else if (compareExceptions(expectedException, actualException))
+				correctException(testInput, actualException);
+			else wrongException(testInput, expectedException, actualException);
 		}
 	}
 
