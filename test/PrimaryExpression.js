@@ -203,8 +203,8 @@ define('../src/Constants', function(AST) {
 		"input": "[]",
 		"expected": [[AST.ARRAY]]
 	}, {
-		"input": "[]",
-		"expected": [[AST.ARRAY]]
+		"input": "[[]]",
+		"expected": [[AST.ARRAY, [AST.ARRAY]]]
 	}, {
 		"input": "[,]",
 		"expected": [[AST.ARRAY, [AST.UNDEFINED]]]
