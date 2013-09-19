@@ -11,7 +11,6 @@ define({
 	ARRAY: 8,
 	FUNCTION: 9,
 	THIS: 10,
-	NAME: 11,
 	PARENS: 12,
 	MULTIPLE: 13,
 	TERNARY: 14,

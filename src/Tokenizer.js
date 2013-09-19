@@ -124,6 +124,7 @@ define(function() {
 			}
 
 			var key = (typeof selector === 'number' ? 'type' : 'value');
+			if (key === 'value' && token.type === T_ERR) return 0;
 
 			if (token[key] === selector) return 1;
 			else if (token.type <= IGNORE_START) return -1;

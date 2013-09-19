@@ -28,31 +28,30 @@ define('Constants', function(Constants) {
 
 	function ProcessCall(node) {
 		var result = processNode(node[1]) + '(';
-		for (var c = 0; c < node[2].length; c++) {
-			if (c) result += ', ';
-			result += processNode(node[2][c]);
+		for (var c = 2; c < node.length; c++) {
+			if (c > 2) result += ', ';
+			result += processNode(node[c]);
 		}
 		return result + ')';
 	}
 
 	function ProcessSelector(node) {
 		var result = '';
-		for (var c = 0; c < node[1].length; c++) {
-			var fragment = node[1][c];
-			if (fragment[0] === 'ID') {
-				if (c) result += '.';
-				result += fragment[1];
+
+		for (var c = 1; c < node.length; c++) {
+			var fragment = node[c];
+
+			if (typeof fragment === 'string') {
+				if (c > 1) result += '.';
+				result += fragment;
 			}
-			else if (fragment[0] === 'STRING') {
-				if (c) result += '[';
-				result += JSON.stringify(fragment[1]);
-				if (c) result += ']';
-			}
+
 			else {
-				if (c) result += '[';
+				if (c > 1) result += '[';
 				result += processNode(fragment);
-				if (c) result += ']';
+				if (c > 1) result += ']';
 			}
+
 		}
 		return result;
 	}
@@ -271,7 +270,6 @@ define('Constants', function(Constants) {
 			case Constants.MULTIPLE: return parseMultiple(node);
 			case Constants.SELECTOR: return ProcessSelector(node);
 			case Constants.RETURN: return 'return ' + (node[1] ? processNode(node[1]) : '');
-			case Constants.NAME: return node[1];
 			case Constants.FOR_IN_LOOP: return processForInLoop(node);
 			case Constants.FOR_LOOP: return processForLoop(node);
 

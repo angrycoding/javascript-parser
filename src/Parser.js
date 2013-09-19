@@ -1,4 +1,6 @@
-define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
+define(['TokenStream', 'Constants'], function(tokenizer, AST) {
+
+	var Tokenizer = tokenizer.constructor;
 
 	// used to validate regular expression flags
 	var validRegexpFlags = /^(?:([gim])(?!.*\1))*$/;
@@ -7,103 +9,6 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	var stringEscape = /\\(t|b|n|r|f|'|"|\\|\x[0-9A-F]{2}|\u[0-9A-F]{4})/g;
 
 	var fileName = 'FILENAME';
-	var tokenizer = new Tokenizer();
-
-	tokenizer.match('KEYWORD', /in\b/, 'in');
-	tokenizer.match('KEYWORD', /if\b/, 'if');
-	tokenizer.match('KEYWORD', /do\b/, 'do');
-	tokenizer.match('KEYWORD', /new\b/, 'new');
-	tokenizer.match('KEYWORD', /for\b/, 'for');
-	tokenizer.match('KEYWORD', /try\b/, 'try');
-	tokenizer.match('KEYWORD', /var\b/, 'var');
-	tokenizer.match('KEYWORD', /case\b/, 'case');
-	tokenizer.match('KEYWORD', /else\b/, 'else');
-	tokenizer.match('KEYWORD', /with\b/, 'with');
-	tokenizer.match('KEYWORD', /void\b/, 'void');
-	tokenizer.match('KEYWORD', /null\b/, 'null');
-	tokenizer.match('KEYWORD', /this\b/, 'this');
-	tokenizer.match('KEYWORD', /true\b/, 'true');
-	tokenizer.match('KEYWORD', /false\b/, 'false');
-	tokenizer.match('KEYWORD', /throw\b/, 'throw');
-	tokenizer.match('KEYWORD', /catch\b/, 'catch');
-	tokenizer.match('KEYWORD', /while\b/, 'while');
-	tokenizer.match('KEYWORD', /break\b/, 'break');
-	tokenizer.match('KEYWORD', /typeof\b/, 'typeof');
-	tokenizer.match('KEYWORD', /switch\b/, 'switch');
-	tokenizer.match('KEYWORD', /return\b/, 'return');
-	tokenizer.match('KEYWORD', /delete\b/, 'delete');
-	tokenizer.match('KEYWORD', /default\b/, 'default');
-	tokenizer.match('KEYWORD', /finally\b/, 'finally');
-	tokenizer.match('KEYWORD', /continue\b/, 'continue');
-	tokenizer.match('KEYWORD', /function\b/, 'function');
-	tokenizer.match('KEYWORD', /debugger\b/, 'debugger');
-	tokenizer.match('KEYWORD', /instanceof\b/, 'instanceof');
-
-	tokenizer.match('STRING', /'(?:[^\'\\]|\\.)*'/);
-	tokenizer.match('STRING', /"(?:[^\"\\]|\\.)*"/);
-	tokenizer.match('HEX', /0[xX][0-9A-Fa-f]+/);
-	tokenizer.match('DECIMAL', /(?:[0-9]*\.)?[0-9]+[eE][+-]?[0-9]+/);
-	tokenizer.match('DECIMAL', /[0-9]*\.[0-9]+/);
-	tokenizer.match('DECIMAL', /[0-9]+/);
-	tokenizer.match('ID', /[_$a-zA-Z\xA0-\uFFFF][_$a-zA-Z0-9\xA0-\uFFFF]*/);
-
-	tokenizer.ignore(/[\x09\x20]+/);
-	tokenizer.ignore(/\/\/[^\x0A\x0D]*/);
-	tokenizer.ignore(/\/\*(?:.|[\n\r])*\*\//);
-	tokenizer.ignore('EOL', /[\x0A\x0D]+/);
-
-	tokenizer.match('>>>=');
-	tokenizer.match('===');
-	tokenizer.match('!==');
-	tokenizer.match('>>>');
-	tokenizer.match('>>=');
-	tokenizer.match('<<=');
-
-	tokenizer.match('--');
-	tokenizer.match('++');
-	tokenizer.match('==');
-	tokenizer.match('-=');
-	tokenizer.match('+=');
-	tokenizer.match('*=');
-	tokenizer.match('%=');
-	tokenizer.match('/=');
-	tokenizer.match('!=');
-	tokenizer.match('||');
-	tokenizer.match('&&');
-	tokenizer.match('>>');
-	tokenizer.match('<<');
-	tokenizer.match('<=');
-	tokenizer.match('>=');
-	tokenizer.match('|=');
-	tokenizer.match('&=');
-	tokenizer.match('^=');
-
-	tokenizer.match('-');
-	tokenizer.match('+');
-	tokenizer.match('*');
-	tokenizer.match('/');
-	tokenizer.match('%');
-	tokenizer.match('<');
-	tokenizer.match('>');
-	tokenizer.match('=');
-	tokenizer.match('|');
-	tokenizer.match('!');
-	tokenizer.match('~');
-	tokenizer.match('&');
-	tokenizer.match('^');
-
-	tokenizer.match('{');
-	tokenizer.match('}');
-	tokenizer.match('(');
-	tokenizer.match(')');
-
-	tokenizer.match('[');
-	tokenizer.match(']');
-	tokenizer.match('.');
-	tokenizer.match('?');
-	tokenizer.match(',');
-	tokenizer.match(':');
-	tokenizer.match(';');
 
 	function ParseError(expected) {
 
@@ -205,7 +110,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 		}
 
-		result = [Constants.REGEXP, result];
+		result = [AST.REGEXP, result];
 
 		// dump(tokenizer.next());
 		// throw 'x';
@@ -226,10 +131,10 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	}
 
 	function ArrayLiteral() {
-		var result = [Constants.ARRAY];
+		var result = [AST.ARRAY];
 		while (!tokenizer.test(Tokenizer.T_EOF)) {
 			while (tokenizer.next(','))
-				result.push([Constants.UNDEFINED]);
+				result.push([AST.UNDEFINED]);
 			if (tokenizer.test(']')) break;
 			result.push(AssignmentExpression());
 			if (tokenizer.test(']')) break;
@@ -240,7 +145,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	}
 
 	function ObjectLiteral() {
-		var key, result = [Constants.OBJECT];
+		var key, result = [AST.OBJECT];
 		if (!tokenizer.test('}')) do {
 			if (key = tokenizer.next(tokenizer.STRING))
 				key = escapeString(key.value);
@@ -268,33 +173,32 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 			args.push(arg.value);
 		} while (tokenizer.next(','));
 		if (!tokenizer.next(')')) ParseError(')');
-		return [Constants.FUNCTION, name, args, Block(true)];
+		return [AST.FUNCTION, name, args, Block(true)];
 	}
-
 
 	function PrimaryExpression(flags) {
 
-		if (tokenizer.next('null')) return [Constants.NULL];
-		if (tokenizer.next('this')) return [Constants.THIS];
-		if (tokenizer.next('true')) return [Constants.TRUE];
-		if (tokenizer.next('false')) return [Constants.FALSE];
+		if (tokenizer.next('null')) return [AST.NULL];
+		if (tokenizer.next('this')) return [AST.THIS];
+		if (tokenizer.next('true')) return [AST.TRUE];
+		if (tokenizer.next('false')) return [AST.FALSE];
 
 		if (tokenizer.test(tokenizer.ID))
-			return [Constants.NAME, tokenizer.next().value];
+			return [AST.SELECTOR, tokenizer.next().value];
 
 		if (tokenizer.test(tokenizer.DECIMAL))
-			return [Constants.NUMBER, parseFloat(tokenizer.next().value)];
+			return [AST.NUMBER, parseFloat(tokenizer.next().value)];
 
 		if (tokenizer.test(tokenizer.HEX))
-			return [Constants.NUMBER, parseInt(tokenizer.next().value, 16)];
+			return [AST.NUMBER, parseInt(tokenizer.next().value, 16)];
 
 		if (tokenizer.test(tokenizer.STRING))
-			return [Constants.STRING, escapeString(tokenizer.next().value)];
+			return [AST.STRING, escapeString(tokenizer.next().value)];
 
 		if (tokenizer.next('(')) {
 			var expression = Expression();
 			if (!tokenizer.next(')')) ParseError(')');
-			return [Constants.PARENS, expression];
+			return [AST.PARENS, expression];
 		}
 
 		if (tokenizer.next('/')) return RegExpLiteral();
@@ -307,7 +211,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	function AllocationExpression(flags) {
 		if (tokenizer.next('new'))
-			return [Constants.NEW, CallExpression()];
+			return [AST.NEW, CallExpression()];
 		else return PrimaryExpression(flags);
 	}
 
@@ -318,29 +222,28 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		if (left) while (true) {
 
 			if (tokenizer.next('.')) {
-				if (!tokenizer.test(tokenizer.ID) &&
-					!tokenizer.test(tokenizer.KEYWORD)) {
-					ParseError('identifier');
-				}
-				if (left[0] !== Constants.SELECTOR)
-					left = [Constants.SELECTOR, [left]];
-				left[1].push(['ID', tokenizer.next().value]);
+				if (!tokenizer.test([
+					tokenizer.ID,
+					tokenizer.KEYWORD
+				])) ParseError('identifier');
+				if (left[0] !== AST.SELECTOR)
+					left = [AST.SELECTOR, left];
+				left.push(tokenizer.next().value);
 			}
 
 			else if (tokenizer.next('[')) {
-				if (tokenizer.next(']')) ParseError('EXPRESSION');
-				if (left[0] !== Constants.SELECTOR)
-					left = [Constants.SELECTOR, [left]];
-				left[1].push(Expression());
+				if (tokenizer.next(']'))
+					ParseError('EXPRESSION');
+				if (left[0] !== AST.SELECTOR)
+					left = [AST.SELECTOR, left];
+				left.push(Expression());
 				if (!tokenizer.next(']')) ParseError(']');
 			}
 
 			else if (tokenizer.next('(')) {
-				left = [Constants.CALL, left, []];
+				left = [AST.CALL, left];
 				if (!tokenizer.test(')')) do {
-					var expression = AssignmentExpression();
-					if (!expression) ParseError('expression');
-					left[2].push(expression);
+					left.push(AssignmentExpression());
 				} while (tokenizer.next(','));
 				if (!tokenizer.next(')')) ParseError(')');
 			}
@@ -351,14 +254,38 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		return left;
 	}
 
+
+	function isLeftHandSide(expression) {
+
+		var type = expression[0];
+
+		while (type === AST.PARENS) {
+			expression = expression[1];
+			type = expression[0];
+		}
+
+		return (
+			type === AST.SELECTOR
+		);
+	}
+
+	function LHSExpression(expression, position) {
+		if (!isLeftHandSide(expression)) {
+			if (position === -1) ParseError('Invalid left-hand side expression in prefix operation');
+			if (position === 1) ParseError('Invalid left-hand side expression in postfix operation')
+			ParseError('Invalid left-hand side in assignment');
+		}
+		return expression;
+	}
+
 	// precedence 3
 	function PostfixExpression(flags) {
 		var expression = CallExpression(flags);
 		if (expression) return (
 			tokenizer.next('++') &&
-			[Constants.INC, expression] ||
+			[AST.INC, LHSExpression(expression, 1)] ||
 			tokenizer.next('--') &&
-			[Constants.DEC, expression] ||
+			[AST.DEC, LHSExpression(expression, 1)] ||
 			expression
 		);
 	}
@@ -367,23 +294,23 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	function UnaryExpression(flags) {
 		return (
 			tokenizer.next('delete') &&
-			[Constants.DELETE, UnaryExpression()] ||
+			[AST.DELETE, UnaryExpression()] ||
 			tokenizer.next('void') &&
-			[Constants.VOID, UnaryExpression()] ||
+			[AST.VOID, UnaryExpression()] ||
 			tokenizer.next('typeof') &&
-			[Constants.TYPEOF, UnaryExpression()] ||
-			tokenizer.next('++') &&
-			[Constants.UINC, UnaryExpression()] ||
-			tokenizer.next('--') &&
-			[Constants.UDEC, UnaryExpression()] ||
+			[AST.TYPEOF, UnaryExpression()] ||
 			tokenizer.next('+') &&
-			[Constants.UADD, UnaryExpression()] ||
+			[AST.UADD, UnaryExpression()] ||
 			tokenizer.next('-') &&
-			[Constants.USUB, UnaryExpression()] ||
+			[AST.USUB, UnaryExpression()] ||
 			tokenizer.next('~') &&
-			[Constants.BNOT, UnaryExpression()] ||
+			[AST.BNOT, UnaryExpression()] ||
 			tokenizer.next('!') &&
-			[Constants.NOT, UnaryExpression()] ||
+			[AST.NOT, UnaryExpression()] ||
+			tokenizer.next('++') &&
+			[AST.UINC, LHSExpression(UnaryExpression(), -1)] ||
+			tokenizer.next('--') &&
+			[AST.UDEC, LHSExpression(UnaryExpression(), -1)] ||
 			PostfixExpression(flags)
 		);
 	}
@@ -393,11 +320,11 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		var left = UnaryExpression(flags);
 		if (left) while (
 			tokenizer.next('*') &&
-			(left = [Constants.MUL, left, UnaryExpression()]) ||
+			(left = [AST.MUL, left, UnaryExpression()]) ||
 			tokenizer.next('/') &&
-			(left = [Constants.DIV, left, UnaryExpression()]) ||
+			(left = [AST.DIV, left, UnaryExpression()]) ||
 			tokenizer.next('%') &&
-			(left = [Constants.MOD, left, UnaryExpression()])
+			(left = [AST.MOD, left, UnaryExpression()])
 		);
 		return left;
 	}
@@ -407,9 +334,9 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		var left = MultiplicativeExpression(flags);
 		if (left) while (
 			tokenizer.next('+') &&
-			(left = [Constants.ADD, left, MultiplicativeExpression()]) ||
+			(left = [AST.ADD, left, MultiplicativeExpression()]) ||
 			tokenizer.next('-') &&
-			(left = [Constants.SUB, left, MultiplicativeExpression()])
+			(left = [AST.SUB, left, MultiplicativeExpression()])
 		);
 		return left;
 	}
@@ -419,11 +346,11 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		var left = AdditiveExpression(flags);
 		if (left) while (
 			tokenizer.next('<<') &&
-			(left = [Constants.BSHL, left, AdditiveExpression()]) ||
+			(left = [AST.BSHL, left, AdditiveExpression()]) ||
 			tokenizer.next('>>') &&
-			(left = [Constants.BSHR, left, AdditiveExpression()]) ||
+			(left = [AST.BSHR, left, AdditiveExpression()]) ||
 			tokenizer.next('>>>') &&
-			(left = [Constants.BSHRZ, left, AdditiveExpression()])
+			(left = [AST.BSHRZ, left, AdditiveExpression()])
 		);
 		return left;
 	}
@@ -433,17 +360,17 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		var left = ShiftExpression(flags &~ NO_IN_FLAG);
 		if (flags &= NO_IN_FLAG, flags = !flags, left) while (
 			(flags && tokenizer.next('in')) &&
-			(left = [Constants.IN, left, ShiftExpression()]) ||
+			(left = [AST.IN, left, ShiftExpression()]) ||
 			tokenizer.next('instanceof') &&
-			(left = [Constants.INSTANCEOF, left, ShiftExpression()]) ||
+			(left = [AST.INSTANCEOF, left, ShiftExpression()]) ||
 			tokenizer.next('<') &&
-			(left = [Constants.LT, left, ShiftExpression()]) ||
+			(left = [AST.LT, left, ShiftExpression()]) ||
 			tokenizer.next('>') &&
-			(left = [Constants.GT, left, ShiftExpression()]) ||
+			(left = [AST.GT, left, ShiftExpression()]) ||
 			tokenizer.next('<=') &&
-			(left = [Constants.LE, left, ShiftExpression()]) ||
+			(left = [AST.LE, left, ShiftExpression()]) ||
 			tokenizer.next('>=') &&
-			(left = [Constants.GE, left, ShiftExpression()])
+			(left = [AST.GE, left, ShiftExpression()])
 		);
 		return left;
 	}
@@ -453,13 +380,13 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		var left = RelationalExpression(flags);
 		if (flags &= ~SILENT_FLAG, left) while (
 			tokenizer.next('==') &&
-			(left = [Constants.EQ, left, RelationalExpression(flags)]) ||
+			(left = [AST.EQ, left, RelationalExpression(flags)]) ||
 			tokenizer.next('===') &&
-			(left = [Constants.SEQ, left, RelationalExpression(flags)]) ||
+			(left = [AST.SEQ, left, RelationalExpression(flags)]) ||
 			tokenizer.next('!=') &&
-			(left = [Constants.NEQ, left, RelationalExpression(flags)]) ||
+			(left = [AST.NEQ, left, RelationalExpression(flags)]) ||
 			tokenizer.next('!==') &&
-			(left = [Constants.SNEQ, left, RelationalExpression(flags)])
+			(left = [AST.SNEQ, left, RelationalExpression(flags)])
 		);
 		return left;
 	}
@@ -469,7 +396,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		var left = EqualityExpression(flags);
 		if (flags &= ~SILENT_FLAG, left) while (
 			tokenizer.next('&') &&
-			(left = [Constants.BAND, left, EqualityExpression(flags)])
+			(left = [AST.BAND, left, EqualityExpression(flags)])
 		);
 		return left;
 	}
@@ -479,7 +406,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		var left = BitwiseANDExpression(flags);
 		if (flags &= ~SILENT_FLAG, left) while (
 			tokenizer.next('^') &&
-			(left = [Constants.BXOR, left, BitwiseANDExpression(flags)])
+			(left = [AST.BXOR, left, BitwiseANDExpression(flags)])
 		);
 		return left;
 	}
@@ -489,7 +416,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		var left = BitwiseXORExpression(flags);
 		if (flags &= ~SILENT_FLAG, left) while (
 			tokenizer.next('|') &&
-			(left = [Constants.BOR, left, BitwiseXORExpression(flags)])
+			(left = [AST.BOR, left, BitwiseXORExpression(flags)])
 		);
 		return left;
 	}
@@ -499,7 +426,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		var left = BitwiseORExpression(flags);
 		if (flags &= ~SILENT_FLAG, left) while (
 			tokenizer.next('&&') &&
-			(left = [Constants.AND, left, BitwiseORExpression(flags)])
+			(left = [AST.AND, left, BitwiseORExpression(flags)])
 		);
 		return left;
 	}
@@ -509,7 +436,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		var left = LogicalANDExpression(flags);
 		if (flags &= ~SILENT_FLAG, left) while (
 			tokenizer.next('||') &&
-			(left = [Constants.OR, left, LogicalANDExpression(flags)])
+			(left = [AST.OR, left, LogicalANDExpression(flags)])
 		);
 		return left;
 	}
@@ -518,7 +445,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	function ConditionalExpression(flags) {
 		var expression = LogicalORExpression(flags);
 		if (expression && tokenizer.next('?')) {
-			expression = [Constants.TERNARY, expression];
+			expression = [AST.TERNARY, expression];
 			expression.push(AssignmentExpression());
 			if (!tokenizer.next(':')) ParseError(':');
 			expression.push(AssignmentExpression(flags &~ SILENT_FLAG));
@@ -532,29 +459,29 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		var expression = ConditionalExpression(flags);
 		if (flags &= ~SILENT_FLAG, expression) return (
 			tokenizer.next('=') &&
-			[Constants.ASSIGN, expression, AssignmentExpression(flags)] ||
+			[AST.ASSIGN, LHSExpression(expression), AssignmentExpression(flags)] ||
 			tokenizer.next('*=') &&
-			[Constants.ASSIGN_MUL, expression, AssignmentExpression(flags)] ||
+			[AST.ASSIGN_MUL, LHSExpression(expression), AssignmentExpression(flags)] ||
 			tokenizer.next('/=') &&
-			[Constants.ASSIGN_DIV, expression, AssignmentExpression(flags)] ||
+			[AST.ASSIGN_DIV, LHSExpression(expression), AssignmentExpression(flags)] ||
 			tokenizer.next('%=') &&
-			[Constants.ASSIGN_MOD, expression, AssignmentExpression(flags)] ||
+			[AST.ASSIGN_MOD, LHSExpression(expression), AssignmentExpression(flags)] ||
 			tokenizer.next('+=') &&
-			[Constants.ASSIGN_ADD, expression, AssignmentExpression(flags)] ||
+			[AST.ASSIGN_ADD, LHSExpression(expression), AssignmentExpression(flags)] ||
 			tokenizer.next('-=') &&
-			[Constants.ASSIGN_SUB, expression, AssignmentExpression(flags)] ||
+			[AST.ASSIGN_SUB, LHSExpression(expression), AssignmentExpression(flags)] ||
 			tokenizer.next('<<=') &&
-			[Constants.ASSIGN_BSHL, expression, AssignmentExpression(flags)] ||
+			[AST.ASSIGN_BSHL, LHSExpression(expression), AssignmentExpression(flags)] ||
 			tokenizer.next('>>=') &&
-			[Constants.ASSIGN_BSHR, expression, AssignmentExpression(flags)] ||
+			[AST.ASSIGN_BSHR, LHSExpression(expression), AssignmentExpression(flags)] ||
 			tokenizer.next('>>>=') &&
-			[Constants.ASSIGN_BSHRZ, expression, AssignmentExpression(flags)] ||
+			[AST.ASSIGN_BSHRZ, LHSExpression(expression), AssignmentExpression(flags)] ||
 			tokenizer.next('&=') &&
-			[Constants.ASSIGN_BAND, expression, AssignmentExpression(flags)] ||
+			[AST.ASSIGN_BAND, LHSExpression(expression), AssignmentExpression(flags)] ||
 			tokenizer.next('^=') &&
-			[Constants.ASSIGN_BXOR, expression, AssignmentExpression(flags)] ||
+			[AST.ASSIGN_BXOR, LHSExpression(expression), AssignmentExpression(flags)] ||
 			tokenizer.next('|=') &&
-			[Constants.ASSIGN_BOR, expression, AssignmentExpression(flags)] ||
+			[AST.ASSIGN_BOR, LHSExpression(expression), AssignmentExpression(flags)] ||
 			expression
 		);
 	}
@@ -564,7 +491,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		var expression = AssignmentExpression(flags);
 		if (expression && tokenizer.next(',')) {
 			flags &= ~SILENT_FLAG;
-			expression = [Constants.MULTIPLE, expression];
+			expression = [AST.MULTIPLE, expression];
 			do { expression.push(AssignmentExpression(flags)); }
 			while (tokenizer.next(','));
 		}
@@ -583,7 +510,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	// simplify
 	function DoStatement() {
 		if (tokenizer.next('do')) return [
-			Constants.DO_LOOP, Statement(true), (
+			AST.DO_LOOP, Statement(true), (
 				tokenizer.next('while') &&
 				BracketExpression()
 			) || ParseError('while')
@@ -593,7 +520,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	// completed
 	function WithStatement() {
 		if (tokenizer.next('with')) return [
-			Constants.WITH,
+			AST.WITH,
 			BracketExpression(),
 			Statement(true)
 		];
@@ -602,7 +529,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	// completed
 	function WhileStatement() {
 		if (tokenizer.next('while')) return [
-			Constants.WHILE_LOOP,
+			AST.WHILE_LOOP,
 			BracketExpression(),
 			Statement(true)
 		];
@@ -611,7 +538,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	// completed
 	function IfStatement() {
 		if (tokenizer.next('if')) {
-			var result = [Constants.IF, BracketExpression()];
+			var result = [AST.IF, BracketExpression()];
 			result.push(Statement(true));
 			if (tokenizer.next('else'))
 				result.push(Statement(true));
@@ -634,7 +561,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		if (tokenizer.next('finally'))
 			result.push(Block(true));
 		if (result.length < 2) ParseError('catch', 'finally');
-		return [Constants.TRY, result];
+		return [AST.TRY, result];
 	}
 
 
@@ -651,7 +578,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		);
 
 		if (tokenizer.next(';')) {
-			result = [Constants.FOR_LOOP, result];
+			result = [AST.FOR_LOOP, result];
 			result.push(Expression(SILENT_FLAG) || ['EMPTY']);
 			if (!tokenizer.next(';')) ParseError(';');
 			result.push(Expression(SILENT_FLAG) || ['EMPTY']);
@@ -659,12 +586,12 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 		else if (tokenizer.test('in')) {
 
-			if (result[0] === Constants.VAR && result.length > 2) {
+			if (result[0] === AST.VAR && result.length > 2) {
 				ParseError(';');
 			} else tokenizer.next();
 
 
-			result = [Constants.FOR_IN_LOOP, result];
+			result = [AST.FOR_IN_LOOP, result];
 			result.push(Expression());
 		}
 
@@ -698,7 +625,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 		if (!tokenizer.next('}')) ParseError('}');
 
-		return [Constants.SWITCH, expression, caseStatements, defaultStatements];
+		return [AST.SWITCH, expression, caseStatements, defaultStatements];
 	}
 
 
@@ -708,7 +635,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		if (tokenizer.next('{')) {
 			var statements = Statements();
 			if (!tokenizer.next('}')) ParseError('}');
-			return [Constants.BLOCK, statements];
+			return [AST.BLOCK, statements];
 		} else if (required) ParseError('{...}');
 	}
 
@@ -716,7 +643,7 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 
 	function VariableStatement(flags) {
 		if (tokenizer.next('var')) {
-			var variable, variables = [Constants.VAR];
+			var variable, variables = [AST.VAR];
 			do {
 				variable = tokenizer.next(tokenizer.ID);
 				if (!variable) ParseError('identifier');
@@ -734,14 +661,14 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 		if (tokenizer.next('throw')) {
 			if (tokenizer.next(tokenizer.EOL))
 				ParseError('Illegal newline after throw');
-			return [Constants.THROW, Expression()];
+			return [AST.THROW, Expression()];
 		}
 	}
 
 	// completed: simplify & check for new lines bugs
 	function ReturnStatement() {
 		if (tokenizer.next('return')) {
-			var result = [Constants.RETURN];
+			var result = [AST.RETURN];
 			var expression = Expression(SILENT_FLAG);
 			if (expression) result.push(expression);
 			return result;
@@ -752,8 +679,8 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	function BreakStatement() {
 		if (tokenizer.next('break')) {
 			var label = tokenizer.next(tokenizer.ID);
-			if (!label) return [Constants.BREAK];
-			return [Constants.BREAK, label.value];
+			if (!label) return [AST.BREAK];
+			return [AST.BREAK, label.value];
 		}
 	}
 
@@ -761,14 +688,14 @@ define(['Tokenizer', 'Constants'], function(Tokenizer, Constants) {
 	function ContinueStatement() {
 		if (tokenizer.next('continue')) {
 			var label = tokenizer.next(tokenizer.ID);
-			if (!label) return [Constants.CONTINUE];
-			return [Constants.CONTINUE, label.value];
+			if (!label) return [AST.CONTINUE];
+			return [AST.CONTINUE, label.value];
 		}
 	}
 
 	function LabelledStatement() {
 		if (tokenizer.test(tokenizer.ID, ':')) return [
-			Constants.LABELLED,
+			AST.LABELLED,
 			tokenizer.next().value,
 			(tokenizer.next(), Statement(true))
 		];
