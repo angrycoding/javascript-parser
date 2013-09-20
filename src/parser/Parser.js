@@ -1,4 +1,4 @@
-define(['TokenStream', 'Constants'], function(tokenizer, AST) {
+define(['TokenStream', '../Constants'], function(tokenizer, AST) {
 
 	var Tokenizer = tokenizer.constructor;
 
@@ -6,9 +6,15 @@ define(['TokenStream', 'Constants'], function(tokenizer, AST) {
 	var validRegexpFlags = /^(?:([gim])(?!.*\1))*$/;
 
 	// used to convert control characters into regular characters
-	var stringEscape = /\\(t|b|n|r|f|'|"|\\|\x[0-9A-F]{2}|\u[0-9A-F]{4})/g;
+	var stringEscape = /\\(x[0-9A-F]{2}|u[0-9A-F]{4}|.)/g;
 
 	var fileName = 'FILENAME';
+
+	var SILENT_FLAG = 1 << 0;
+	var NO_IN_FLAG = 1 << 1;
+
+
+
 
 	function ParseError(expected) {
 
@@ -49,37 +55,40 @@ define(['TokenStream', 'Constants'], function(tokenizer, AST) {
 		};
 	}
 
-	function escapeString(string) {
+	function escapeStringLiteral(string) {
 		var string = string.slice(1, -1);
-		return string.replace(stringEscape, function(str, ch) {
-			switch (ch[0]) {
-				// single quotation mark
-				case '\'': return '\'';
-				// double quotation mark
-				case '\"': return '"';
-				// backslash
-				case '\\': return '\\';
+		return string.replace(stringEscape, function(str, match) {
+			switch (match[0] + match.length) {
 				// backspace
-				case 'b': return String.fromCharCode(8);
-				// horizontal tab
-				case 't': return String.fromCharCode(9);
-				// new line
-				case 'n': return String.fromCharCode(10);
+				case 'b1': return String.fromCharCode(8);
 				// form feed
-				case 'f': return String.fromCharCode(12);
+				case 'f1': return String.fromCharCode(12);
+				// new line
+				case 'n1': return String.fromCharCode(10);
 				// carriage return
-				case 'r': return String.fromCharCode(13);
+				case 'r1': return String.fromCharCode(13);
+				// horizontal tab
+				case 't1': return String.fromCharCode(9);
 				// unicode sequence (4 hex digits: dddd)
-				case 'u': return String.fromCharCode(parseInt(ch.substr(1), 16));
+				case 'u5': return String.fromCharCode(parseInt(match.substr(1), 16));
 				// hexadecimal sequence (2 digits: dd)
-				case 'x': return String.fromCharCode(parseInt(ch.substr(1), 16));
+				case 'x3': return String.fromCharCode(parseInt(match.substr(1), 16));
+				// by default return escaped character "as is"
+				default: return match;
 			}
 		});
 	}
 
-
-	var SILENT_FLAG = 1 << 0;
-	var NO_IN_FLAG = 1 << 1;
+	function LHSExpression(expression, position) {
+		while (expression[0] === AST.PARENS)
+			expression = expression[1];
+		if (expression[0] !== AST.SELECTOR) {
+			if (position === -1) ParseError('Invalid left-hand side expression in prefix operation');
+			if (position === 1) ParseError('Invalid left-hand side expression in postfix operation')
+			ParseError('Invalid left-hand side in assignment');
+		}
+		return expression;
+	}
 
 
 
@@ -148,7 +157,7 @@ define(['TokenStream', 'Constants'], function(tokenizer, AST) {
 		var key, result = [AST.OBJECT];
 		if (!tokenizer.test('}')) do {
 			if (key = tokenizer.next(tokenizer.STRING))
-				key = escapeString(key.value);
+				key = escapeStringLiteral(key.value);
 			else if (key = tokenizer.next(tokenizer.DECIMAL))
 				key = String(parseFloat(key.value));
 			else if (key = tokenizer.next(tokenizer.ID))
@@ -193,7 +202,7 @@ define(['TokenStream', 'Constants'], function(tokenizer, AST) {
 			return [AST.NUMBER, parseInt(tokenizer.next().value, 16)];
 
 		if (tokenizer.test(tokenizer.STRING))
-			return [AST.STRING, escapeString(tokenizer.next().value)];
+			return [AST.STRING, escapeStringLiteral(tokenizer.next().value)];
 
 		if (tokenizer.next('(')) {
 			var expression = Expression();
@@ -254,29 +263,6 @@ define(['TokenStream', 'Constants'], function(tokenizer, AST) {
 		return left;
 	}
 
-
-	function isLeftHandSide(expression) {
-
-		var type = expression[0];
-
-		while (type === AST.PARENS) {
-			expression = expression[1];
-			type = expression[0];
-		}
-
-		return (
-			type === AST.SELECTOR
-		);
-	}
-
-	function LHSExpression(expression, position) {
-		if (!isLeftHandSide(expression)) {
-			if (position === -1) ParseError('Invalid left-hand side expression in prefix operation');
-			if (position === 1) ParseError('Invalid left-hand side expression in postfix operation')
-			ParseError('Invalid left-hand side in assignment');
-		}
-		return expression;
-	}
 
 	// precedence 3
 	function PostfixExpression(flags) {

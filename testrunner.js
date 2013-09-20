@@ -1,7 +1,7 @@
 require('./krang.js')({
 	cache: false,
 	debug: false
-}).require(['src/Parser', 'test/test'], function(Parser, tests) {
+}).require(['src/parser/Parser', 'test/test'], function(Parser, tests) {
 
 	function unexpectedSuccess(input, expectedException, actualResult) {
 		console.info('[ FAIL - unexpectedSuccess ]', input, expectedException, actualResult);
