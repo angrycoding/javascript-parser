@@ -17,8 +17,10 @@ define(function() {
 
 	function Tokenizer() {
 
-		var tokenRegExp = [];
-		var tokenInfo = [];
+		var tokenRegExp = null;
+		var tokenIds = [];
+
+		var contextData = {};
 		var tokenBuffer = [];
 		var inputString, inputLength;
 
@@ -28,7 +30,9 @@ define(function() {
 
 		// match next token and put it into the tokenBuffer
 		function readTokenToBuffer() {
+
 			var startPos, matchPos, matchStr, match, length;
+
 			for (;;) if (tokenRegExp.lastIndex !== inputLength) {
 				startPos = tokenRegExp.lastIndex;
 				if (match = tokenRegExp.exec(inputString)) {
@@ -45,7 +49,7 @@ define(function() {
 					// find matched group index
 					while (!(matchStr = match[length--]));
 					// obtain token info
-					match = tokenInfo[length];
+					match = tokenIds[length];
 					// match next token in case if this one is ignored
 					if (match === IGNORE_START) continue;
 					// return matched token
@@ -81,7 +85,7 @@ define(function() {
 			return tokenBuffer[offset];
 		}
 
-		function addExpression(args, ignore) {
+		function addExpression(contextId, args, ignore) {
 			if (args.length === 0) return;
 
 			var tokenId, expression;
@@ -103,8 +107,13 @@ define(function() {
 				expression = expression.slice(1, -1);
 			} else expression = escapeRegExp(expression);
 
-			tokenRegExp.push('(' + expression + ')');
-			tokenInfo.push(tokenId);
+			if (!contextData.hasOwnProperty(contextId))
+				contextData[contextId] = [[], []];
+
+			contextData[contextId][0].push('(' + expression + ')');
+			contextData[contextId][1].push(tokenId);
+
+			return this;
 		}
 
 
@@ -188,58 +197,36 @@ define(function() {
 
 		}
 
-
-
-		this.match = function() {
-			addExpression.call(this, arguments, false);
-		};
-
-		this.ignore = function() {
-			addExpression.call(this, arguments, true);
-		};
-
 		this.tokenize = function(input) {
-			tokenBuffer = [];
+
 			inputString = input;
 			inputLength = input.length;
-			if (tokenRegExp instanceof Array) {
-				tokenRegExp = tokenRegExp.join('|');
-				tokenRegExp = new RegExp(tokenRegExp, 'g');
-			} else tokenRegExp.lastIndex = 0;
+
+			for (var contextId in contextData) {
+				var context = contextData[contextId];
+				if (context[0] instanceof Array) {
+					context[0] = context[0].join('|');
+					context[0] = new RegExp(context[0], 'g');
+				} else context[0].lastIndex = 0;
+			}
+
+			tokenBuffer = [];
+
+			this.setContext('js');
+
 		};
 
+		this.setContext = function(contextId) {
+			var offset = 0;
 
+			if (tokenBuffer.length) offset = tokenBuffer[0].pos;
+			else if (tokenRegExp) offset = tokenRegExp.lastIndex;
 
-
-		function readCharacter(move) {
-
-			var pos = (
-				tokenBuffer.length ?
-				tokenBuffer[0].pos :
-				tokenRegExp.lastIndex
-			);
-
-			var ch = (
-				pos === inputLength ?
-				'EOF' : inputString[pos]
-			);
-
-			if (arguments.length > 1 && arguments[1] !== ch) {
-				return;
-			}
-
-			if (move && pos < inputLength) {
-				tokenBuffer = [];
-				tokenRegExp.lastIndex =
-				pos + 1;
-			}
-
-			return ch;
-		}
-
-
-
-
+			tokenBuffer = [];
+			tokenIds = contextData[contextId][1];
+			tokenRegExp = contextData[contextId][0];
+			tokenRegExp.lastIndex = offset;
+		};
 
 		this.getFragment = function() {
 			for (var c = 0; c < tokenBuffer.length; c++) {
@@ -262,64 +249,33 @@ define(function() {
 
 		};
 
+		this.context = function(contextId) {
 
+			var instance = this;
 
-
-
-		this.test = function(selector) {
-
-			return !!consume(
-				Array.prototype.slice.call(arguments),
-				false
-			);
-
+			return {
+				match: function() {
+					addExpression.call(instance, contextId, arguments, false);
+				},
+				ignore: function() {
+					addExpression.call(instance, contextId, arguments, true);
+				}
+			};
 
 
 		};
 
-
-
-
+		this.test = function() {
+			var selector = Array.prototype.slice.call(arguments);
+			return !!consume(selector, false);
+		};
 
 		this.next = function() {
-			return consume(
-				Array.prototype.slice.call(arguments),
-				true
-			);
+			var selector = Array.prototype.slice.call(arguments);
+			return consume(selector, true);
 		};
 
-
-
-
-
-
-
-
-
-		this.testChar = function(ch) {
-			if (arguments.length === 0) return true;
-			return !!readCharacter(false, ch);
-		};
-
-		this.nextChar = function(ch) {
-
-			if (arguments.length === 0) {
-				return readCharacter(true);
-			}
-
-			else {
-				return readCharacter(true, ch);
-			}
-
-
-		}
-
-
-
-
-
-
-	}
+	};
 
 	Tokenizer.T_EOF = T_EOF;
 	Tokenizer.T_ERR = T_ERR;

@@ -1,9 +1,11 @@
-define(['TokenStream', '../Constants'], function(tokenizer, AST) {
+define([
+	'../Constants',
+	'TokenStream',
+	'XMLParser',
+	'RegexpParser'
+], function(AST, tokenizer, XMLParser, RegexpParser) {
 
 	var Tokenizer = tokenizer.constructor;
-
-	// used to validate regular expression flags
-	var validRegexpFlags = /^(?:([gim])(?!.*\1))*$/;
 
 	// used to convert control characters into regular characters
 	var stringEscape = /\\(x[0-9A-F]{2}|u[0-9A-F]{4}|.)/g;
@@ -13,8 +15,30 @@ define(['TokenStream', '../Constants'], function(tokenizer, AST) {
 	var SILENT_FLAG = 1 << 0;
 	var NO_IN_FLAG = 1 << 1;
 
-
-
+	// replaces control sequences with actual characters
+	function escapeStringLiteral(string) {
+		var string = string.slice(1, -1);
+		return string.replace(stringEscape, function(str, match) {
+			switch (match[0] + match.length) {
+				// backspace
+				case 'b1': return String.fromCharCode(8);
+				// form feed
+				case 'f1': return String.fromCharCode(12);
+				// new line
+				case 'n1': return String.fromCharCode(10);
+				// carriage return
+				case 'r1': return String.fromCharCode(13);
+				// horizontal tab
+				case 't1': return String.fromCharCode(9);
+				// unicode sequence (4 hex digits: dddd)
+				case 'u5': return String.fromCharCode(parseInt(match.substr(1), 16));
+				// hexadecimal sequence (2 digits: dd)
+				case 'x3': return String.fromCharCode(parseInt(match.substr(1), 16));
+				// by default return escaped character "as is"
+				default: return match;
+			}
+		});
+	}
 
 	function ParseError(expected) {
 
@@ -55,30 +79,6 @@ define(['TokenStream', '../Constants'], function(tokenizer, AST) {
 		};
 	}
 
-	function escapeStringLiteral(string) {
-		var string = string.slice(1, -1);
-		return string.replace(stringEscape, function(str, match) {
-			switch (match[0] + match.length) {
-				// backspace
-				case 'b1': return String.fromCharCode(8);
-				// form feed
-				case 'f1': return String.fromCharCode(12);
-				// new line
-				case 'n1': return String.fromCharCode(10);
-				// carriage return
-				case 'r1': return String.fromCharCode(13);
-				// horizontal tab
-				case 't1': return String.fromCharCode(9);
-				// unicode sequence (4 hex digits: dddd)
-				case 'u5': return String.fromCharCode(parseInt(match.substr(1), 16));
-				// hexadecimal sequence (2 digits: dd)
-				case 'x3': return String.fromCharCode(parseInt(match.substr(1), 16));
-				// by default return escaped character "as is"
-				default: return match;
-			}
-		});
-	}
-
 	function LHSExpression(expression, position) {
 		while (expression[0] === AST.PARENS)
 			expression = expression[1];
@@ -92,52 +92,6 @@ define(['TokenStream', '../Constants'], function(tokenizer, AST) {
 
 
 
-
-	function RegExpLiteral() {
-
-		var result = '', inCharSet = false;
-
-		while (true) {
-
-			if (tokenizer.testChar('\x0A')) break;
-			if (tokenizer.testChar('\x0D')) break;
-			if (tokenizer.testChar('EOF')) break;
-
-			if (!inCharSet && tokenizer.testChar('/')) break;
-
-			if (tokenizer.nextChar('\\'))
-				result += '\\';
-			else if (tokenizer.testChar('['))
-				inCharSet = true;
-			else if (tokenizer.testChar(']'))
-				inCharSet = false;
-			result += tokenizer.nextChar();
-		}
-
-		if (!tokenizer.next('/')) {
-			ParseError('/UNTERMINATED');
-
-		}
-
-		result = [AST.REGEXP, result];
-
-		// dump(tokenizer.next());
-		// throw 'x';
-
-		var flags = (
-			tokenizer.next(tokenizer.ID) ||
-			tokenizer.next(tokenizer.KEYWORD)
-		);
-
-		if (flags) {
-			flags = flags.value;
-			if (!validRegexpFlags.test(flags))
-				ParseError('INVALID:' + flags);
-			result.push(flags);
-		}
-
-		return result;
-	}
 
 	function ArrayLiteral() {
 		var result = [AST.ARRAY];
@@ -185,6 +139,9 @@ define(['TokenStream', '../Constants'], function(tokenizer, AST) {
 		return [AST.FUNCTION, name, args, Block(true)];
 	}
 
+
+
+
 	function PrimaryExpression(flags) {
 
 		if (tokenizer.next('null')) return [AST.NULL];
@@ -210,7 +167,9 @@ define(['TokenStream', '../Constants'], function(tokenizer, AST) {
 			return [AST.PARENS, expression];
 		}
 
-		if (tokenizer.next('/')) return RegExpLiteral();
+		if (tokenizer.test('<')) return XMLParser();
+		if (tokenizer.test('/')) return RegexpParser();
+
 		if (tokenizer.next('[')) return ArrayLiteral();
 		if (tokenizer.next('{')) return ObjectLiteral();
 		if (tokenizer.next('function')) return FunctionExpression();

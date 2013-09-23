@@ -8,34 +8,49 @@
 
 		<script id="script" type="text/plain">
 
-			// var script = document.getElementById('script');//.innerHTML;
-			// alert(JSON.stringify([1, 2, 3, 4]));
+			var CDATA = /^abc[a-z]+$/gm;
+			var num = this;
 
+			alert(CDATA);
 
-			var x = (function() {
-				alert(1);
-			});
+			/*
+			var widgetCSS = <style type="text/css">
+				.item {
+					margin-bottom: 5px;
+					border-radius: 6px;
+					border: 1px solid red;
+				}
+			</style>;
 
-			alert(x());
+			alert(widgetCSS);
 
-			// var Const = function(a, b, c) {
-			// 	alert(a, b, c);
-			// };
+			document.body.appendChild(widgetCSS);
 
-			// Const.prototype.foo = function() {
-			// // 	alert('bar');
-			// };
+			var f = document.createElement('a');
+			f.setAttribute('href', 'http://www.google.com/');
+			f.setAttribute('target', '_blank');
+			f.innerHTML = 'google';
+			document.body.appendChild(f);
 
+			var x = <div class="item">
+
+					foo: <strong>bar</strong>
+					<input type="button" value="Кнопка" onclick="alert(1);" />
+					<textarea><![CDATA[
+						<div>XXXX</div>
+					]]></textarea>
+				</div>;
+
+			for (var c = 0; c < 3; c++) {
+				document.body.appendChild(x.cloneNode(true));
+			}
+			*/
 
 		</script>
 
 		<script type="text/javascript">
 
-			// for (var i = 0; i < 10; i++) {
-			// 	for (var j = 0; j < 10; j++) {
-			// 		console.info([i, j]);
-			// 	}
-			// }
+			// var x = /[z-a]+/;
 
 			function dump(value) {
 				console.info(
@@ -62,12 +77,13 @@
 			], function(Parser, Generator, Evaluator) {
 
 				var AST = Parser(script);
-				// dump(AST);
+				var AST = Parser(script);
+				dump(AST);
 				// console.info(Generator(AST));
 
-				Evaluator(AST, function(result) {
-					console.info('DONE EVALUATION', result);
-				});
+				// Evaluator(AST, function(result) {
+				// 	console.info('DONE EVALUATION', result);
+				// });
 
 			});
 

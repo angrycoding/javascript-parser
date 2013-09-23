@@ -2,101 +2,135 @@ define('Tokenizer', function(Tokenizer) {
 
 	var tokenStream = new Tokenizer();
 
-	tokenStream.match('KEYWORD', /in\b/, 'in');
-	tokenStream.match('KEYWORD', /if\b/, 'if');
-	tokenStream.match('KEYWORD', /do\b/, 'do');
-	tokenStream.match('KEYWORD', /new\b/, 'new');
-	tokenStream.match('KEYWORD', /for\b/, 'for');
-	tokenStream.match('KEYWORD', /try\b/, 'try');
-	tokenStream.match('KEYWORD', /var\b/, 'var');
-	tokenStream.match('KEYWORD', /case\b/, 'case');
-	tokenStream.match('KEYWORD', /else\b/, 'else');
-	tokenStream.match('KEYWORD', /with\b/, 'with');
-	tokenStream.match('KEYWORD', /void\b/, 'void');
-	tokenStream.match('KEYWORD', /null\b/, 'null');
-	tokenStream.match('KEYWORD', /this\b/, 'this');
-	tokenStream.match('KEYWORD', /true\b/, 'true');
-	tokenStream.match('KEYWORD', /false\b/, 'false');
-	tokenStream.match('KEYWORD', /throw\b/, 'throw');
-	tokenStream.match('KEYWORD', /catch\b/, 'catch');
-	tokenStream.match('KEYWORD', /while\b/, 'while');
-	tokenStream.match('KEYWORD', /break\b/, 'break');
-	tokenStream.match('KEYWORD', /typeof\b/, 'typeof');
-	tokenStream.match('KEYWORD', /switch\b/, 'switch');
-	tokenStream.match('KEYWORD', /return\b/, 'return');
-	tokenStream.match('KEYWORD', /delete\b/, 'delete');
-	tokenStream.match('KEYWORD', /default\b/, 'default');
-	tokenStream.match('KEYWORD', /finally\b/, 'finally');
-	tokenStream.match('KEYWORD', /continue\b/, 'continue');
-	tokenStream.match('KEYWORD', /function\b/, 'function');
-	tokenStream.match('KEYWORD', /debugger\b/, 'debugger');
-	tokenStream.match('KEYWORD', /instanceof\b/, 'instanceof');
+	var jsContext = tokenStream.context('js');
 
-	tokenStream.match('STRING', /'(?:[^\'\\]|\\.)*'/);
-	tokenStream.match('STRING', /"(?:[^\"\\]|\\.)*"/);
-	tokenStream.match('HEX', /0[xX][0-9A-Fa-f]+/);
-	tokenStream.match('DECIMAL', /(?:[0-9]*\.)?[0-9]+[eE][+-]?[0-9]+/);
-	tokenStream.match('DECIMAL', /[0-9]*\.[0-9]+/);
-	tokenStream.match('DECIMAL', /[0-9]+/);
-	tokenStream.match('ID', /[_$a-zA-Z\xA0-\uFFFF][_$a-zA-Z0-9\xA0-\uFFFF]*/);
+	jsContext.match('KEYWORD', /in\b/, 'in');
+	jsContext.match('KEYWORD', /if\b/, 'if');
+	jsContext.match('KEYWORD', /do\b/, 'do');
+	jsContext.match('KEYWORD', /new\b/, 'new');
+	jsContext.match('KEYWORD', /for\b/, 'for');
+	jsContext.match('KEYWORD', /try\b/, 'try');
+	jsContext.match('KEYWORD', /var\b/, 'var');
+	jsContext.match('KEYWORD', /case\b/, 'case');
+	jsContext.match('KEYWORD', /else\b/, 'else');
+	jsContext.match('KEYWORD', /with\b/, 'with');
+	jsContext.match('KEYWORD', /void\b/, 'void');
+	jsContext.match('KEYWORD', /null\b/, 'null');
+	jsContext.match('KEYWORD', /this\b/, 'this');
+	jsContext.match('KEYWORD', /true\b/, 'true');
+	jsContext.match('KEYWORD', /false\b/, 'false');
+	jsContext.match('KEYWORD', /throw\b/, 'throw');
+	jsContext.match('KEYWORD', /catch\b/, 'catch');
+	jsContext.match('KEYWORD', /while\b/, 'while');
+	jsContext.match('KEYWORD', /break\b/, 'break');
+	jsContext.match('KEYWORD', /typeof\b/, 'typeof');
+	jsContext.match('KEYWORD', /switch\b/, 'switch');
+	jsContext.match('KEYWORD', /return\b/, 'return');
+	jsContext.match('KEYWORD', /delete\b/, 'delete');
+	jsContext.match('KEYWORD', /default\b/, 'default');
+	jsContext.match('KEYWORD', /finally\b/, 'finally');
+	jsContext.match('KEYWORD', /continue\b/, 'continue');
+	jsContext.match('KEYWORD', /function\b/, 'function');
+	jsContext.match('KEYWORD', /debugger\b/, 'debugger');
+	jsContext.match('KEYWORD', /instanceof\b/, 'instanceof');
 
-	tokenStream.ignore(/[\x09\x20]+/);
-	tokenStream.ignore(/\/\/[^\x0A\x0D]*/);
-	tokenStream.ignore(/\/\*(?:.|[\n\r])*\*\//);
-	tokenStream.ignore('EOL', /[\x0A\x0D]+/);
+	jsContext.match('STRING', /'(?:[^\'\\]|\\.)*'/);
+	jsContext.match('STRING', /"(?:[^\"\\]|\\.)*"/);
+	jsContext.match('HEX', /0[xX][0-9A-Fa-f]+/);
+	jsContext.match('DECIMAL', /(?:[0-9]*\.)?[0-9]+[eE][+-]?[0-9]+/);
+	jsContext.match('DECIMAL', /[0-9]*\.[0-9]+/);
+	jsContext.match('DECIMAL', /[0-9]+/);
+	jsContext.match('ID', /[_$a-zA-Z\xA0-\uFFFF][_$a-zA-Z0-9\xA0-\uFFFF]*/);
 
-	tokenStream.match('>>>=');
-	tokenStream.match('===');
-	tokenStream.match('!==');
-	tokenStream.match('>>>');
-	tokenStream.match('>>=');
-	tokenStream.match('<<=');
+	jsContext.ignore(/[\x09\x20]+/);
+	jsContext.ignore(/\/\/[^\x0A\x0D]*/);
+	jsContext.ignore(/\/\*(?:.|[\n\r])*\*\//);
+	jsContext.ignore('EOL', /[\x0A\x0D]+/);
 
-	tokenStream.match('--');
-	tokenStream.match('++');
-	tokenStream.match('==');
-	tokenStream.match('-=');
-	tokenStream.match('+=');
-	tokenStream.match('*=');
-	tokenStream.match('%=');
-	tokenStream.match('/=');
-	tokenStream.match('!=');
-	tokenStream.match('||');
-	tokenStream.match('&&');
-	tokenStream.match('>>');
-	tokenStream.match('<<');
-	tokenStream.match('<=');
-	tokenStream.match('>=');
-	tokenStream.match('|=');
-	tokenStream.match('&=');
-	tokenStream.match('^=');
+	jsContext.match('>>>=');
+	jsContext.match('===');
+	jsContext.match('!==');
+	jsContext.match('>>>');
+	jsContext.match('>>=');
+	jsContext.match('<<=');
 
-	tokenStream.match('-');
-	tokenStream.match('+');
-	tokenStream.match('*');
-	tokenStream.match('/');
-	tokenStream.match('%');
-	tokenStream.match('<');
-	tokenStream.match('>');
-	tokenStream.match('=');
-	tokenStream.match('|');
-	tokenStream.match('!');
-	tokenStream.match('~');
-	tokenStream.match('&');
-	tokenStream.match('^');
+	jsContext.match('--');
+	jsContext.match('++');
+	jsContext.match('==');
+	jsContext.match('-=');
+	jsContext.match('+=');
+	jsContext.match('*=');
+	jsContext.match('%=');
+	jsContext.match('/=');
+	jsContext.match('!=');
+	jsContext.match('||');
+	jsContext.match('&&');
+	jsContext.match('>>');
+	jsContext.match('<<');
+	jsContext.match('<=');
+	jsContext.match('>=');
+	jsContext.match('|=');
+	jsContext.match('&=');
+	jsContext.match('^=');
 
-	tokenStream.match('{');
-	tokenStream.match('}');
-	tokenStream.match('(');
-	tokenStream.match(')');
+	jsContext.match('-');
+	jsContext.match('+');
+	jsContext.match('*');
+	jsContext.match('/');
+	jsContext.match('%');
+	jsContext.match('<');
+	jsContext.match('>');
+	jsContext.match('=');
+	jsContext.match('|');
+	jsContext.match('!');
+	jsContext.match('~');
+	jsContext.match('&');
+	jsContext.match('^');
 
-	tokenStream.match('[');
-	tokenStream.match(']');
-	tokenStream.match('.');
-	tokenStream.match('?');
-	tokenStream.match(',');
-	tokenStream.match(':');
-	tokenStream.match(';');
+	jsContext.match('{');
+	jsContext.match('}');
+	jsContext.match('(');
+	jsContext.match(')');
+
+	jsContext.match('[');
+	jsContext.match(']');
+	jsContext.match('.');
+	jsContext.match('?');
+	jsContext.match(',');
+	jsContext.match(':');
+	jsContext.match(';');
+
+
+	var reContext = tokenStream.context('regexp');
+	reContext.match('/');
+	reContext.match('\\');
+	reContext.match('(');
+	reContext.match(')');
+	reContext.match('|');
+	reContext.match('[');
+	reContext.match(']');
+	reContext.match('EOL', /\x0A\x0D/);
+
+	var xmlContext = tokenStream.context('xml');
+
+	xmlContext.match('TAG_OPEN_START', /<[_:A-Za-z][-._:A-Za-z0-9]*/);
+	xmlContext.match('TAG_OPEN_END1', /[\x09\x0A\x0D\x20]*>/);
+	xmlContext.match('TAG_OPEN_END2', /[\x09\x0A\x0D\x20]*\/>/);
+
+	xmlContext.match('<?');
+	xmlContext.match('?>');
+
+	xmlContext.match('<![CDATA[');
+	xmlContext.match(']]>');
+
+	xmlContext.match('TAG_CLOSE', /<\/[_:A-Za-z][-._:A-Za-z0-9]*[\x09\x0A\x0D\x20]*>/);
+	xmlContext.match('ATTR_NAME', /[\x09\x0A\x0D\x20]+[_:A-Za-z][-._:A-Za-z0-9]*/);
+	xmlContext.match('EQUALS', /[\x09\x0A\x0D\x20]*=[\x09\x0A\x0D\x20]*/);
+
+	xmlContext.match('ATTR_VALUE', /'(?:[^<\'\\]|\\.)*'/);
+	xmlContext.match('ATTR_VALUE', /"(?:[^<\"\\]|\\.)*"/);
+
+	xmlContext.ignore(/<!--(?:[^-]|-(?!->))*-->/);
 
 	return tokenStream;
 

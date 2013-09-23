@@ -279,6 +279,34 @@ define(['../Constants'], function(AST) {
 	}
 
 
+	function processXMLNode(node, stack, ret) {
+
+
+		if (node[0] === AST.XML_TEXT)
+			ret(document.createTextNode(node[1]));
+
+		else if (node[0] === AST.XML_CDATA)
+			ret(document.createTextNode(node[1]))
+
+		else if (node[0] === AST.XML_TAG) {
+
+			var el = document.createElement(node[1]);
+			for (var c = 0; c < node[2].length; c++)
+				el.setAttribute(node[2][c][0], node[2][c][1]);
+
+			forEachAsync(node[3], function(node, next) {
+
+				processXMLNode(node, stack, function(node) {
+					el.appendChild(node);
+					next();
+				});
+
+			}, function() {
+				ret(el);
+			});
+		}
+
+	}
 
 
 	function processNode(node, stack, ret) {
@@ -292,6 +320,7 @@ define(['../Constants'], function(AST) {
 			case AST.STRING: return ret(node[1]);
 			case AST.ARRAY: return processArray(node, stack, ret);
 			case AST.OBJECT: return processObject(node, stack, ret);
+			case AST.REGEXP: return ret(new RegExp(node[1], node[2]));
 			case AST.PARENS: return processNode(node[1], stack, ret);
 
 			case AST.IF: return processIf(node, stack, ret);
@@ -415,6 +444,9 @@ define(['../Constants'], function(AST) {
 			});
 
 			case AST.BLOCK: return processNodes(node[1], stack, ret);
+
+			case AST.XML_TAG:
+			case AST.XML_CDATA: return processXMLNode(node, stack, ret);
 
 			default:
 				throw node[0];
