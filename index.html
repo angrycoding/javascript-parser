@@ -8,12 +8,14 @@
 
 		<script id="script" type="text/plain">
 
-			var CDATA = /^abc[a-z]+$/gm;
-			var num = this;
+			var CDATA = <![CDATA[
+				hello
+				world
+				2 x 2 = 4
+			]]>;
 
 			alert(CDATA);
 
-			/*
 			var widgetCSS = <style type="text/css">
 				.item {
 					margin-bottom: 5px;
@@ -44,13 +46,13 @@
 			for (var c = 0; c < 3; c++) {
 				document.body.appendChild(x.cloneNode(true));
 			}
-			*/
+
 
 		</script>
 
 		<script type="text/javascript">
 
-			// var x = /[z-a]+/;
+			// var x = /
 
 			function dump(value) {
 				console.info(
@@ -77,13 +79,12 @@
 			], function(Parser, Generator, Evaluator) {
 
 				var AST = Parser(script);
-				var AST = Parser(script);
 				dump(AST);
 				// console.info(Generator(AST));
 
-				// Evaluator(AST, function(result) {
-				// 	console.info('DONE EVALUATION', result);
-				// });
+				Evaluator(AST, function(result) {
+					console.info('DONE EVALUATION', result);
+				});
 
 			});
 
