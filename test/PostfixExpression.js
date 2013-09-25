@@ -2,118 +2,118 @@ define('../src/Constants', function(AST) {
 
 	return [{
 		"input": "null++",
-		"expected": [[AST.INC, [AST.NULL]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "this++",
-		"expected": [[AST.INC, [AST.THIS]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "true++",
-		"expected": [[AST.INC, [AST.TRUE]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "false++",
-		"expected": [[AST.INC, [AST.FALSE]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "32++",
-		"expected": [[AST.INC, [AST.NUMBER, 32]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": ".32++",
-		"expected": [[AST.INC, [AST.NUMBER, .32]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "0.32++",
-		"expected": [[AST.INC, [AST.NUMBER, 0.32]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "32e3++",
-		"expected": [[AST.INC, [AST.NUMBER, 32e3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": ".32e3++",
-		"expected": [[AST.INC, [AST.NUMBER, .32e3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "0.32e3++",
-		"expected": [[AST.INC, [AST.NUMBER, 0.32e3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "32e+3++",
-		"expected": [[AST.INC, [AST.NUMBER, 32e+3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": ".32e+3++",
-		"expected": [[AST.INC, [AST.NUMBER, .32e+3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "0.32e+3++",
-		"expected": [[AST.INC, [AST.NUMBER, 0.32e+3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "32e-3++",
-		"expected": [[AST.INC, [AST.NUMBER, 32e-3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": ".32e-3++",
-		"expected": [[AST.INC, [AST.NUMBER, .32e-3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "0.32e-3++",
-		"expected": [[AST.INC, [AST.NUMBER, 0.32e-3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "0xBABE++",
-		"expected": [[AST.INC, [AST.NUMBER, 0xBABE]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "'string'++",
-		"expected": [[AST.INC, [AST.STRING, "string"]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "(123)++",
-		"expected": [[AST.INC, [AST.PARENS, [AST.NUMBER, 123]]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "null--",
-		"expected": [[AST.DEC, [AST.NULL]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "this--",
-		"expected": [[AST.DEC, [AST.THIS]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "true--",
-		"expected": [[AST.DEC, [AST.TRUE]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "false--",
-		"expected": [[AST.DEC, [AST.FALSE]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "32--",
-		"expected": [[AST.DEC, [AST.NUMBER, 32]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": ".32--",
-		"expected": [[AST.DEC, [AST.NUMBER, .32]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "0.32--",
-		"expected": [[AST.DEC, [AST.NUMBER, 0.32]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "32e3--",
-		"expected": [[AST.DEC, [AST.NUMBER, 32e3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": ".32e3--",
-		"expected": [[AST.DEC, [AST.NUMBER, .32e3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "0.32e3--",
-		"expected": [[AST.DEC, [AST.NUMBER, 0.32e3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "32e+3--",
-		"expected": [[AST.DEC, [AST.NUMBER, 32e+3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": ".32e+3--",
-		"expected": [[AST.DEC, [AST.NUMBER, .32e+3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "0.32e+3--",
-		"expected": [[AST.DEC, [AST.NUMBER, 0.32e+3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "32e-3--",
-		"expected": [[AST.DEC, [AST.NUMBER, 32e-3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": ".32e-3--",
-		"expected": [[AST.DEC, [AST.NUMBER, .32e-3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "0.32e-3--",
-		"expected": [[AST.DEC, [AST.NUMBER, 0.32e-3]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "0xBABE--",
-		"expected": [[AST.DEC, [AST.NUMBER, 0xBABE]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "'string'--",
-		"expected": [[AST.DEC, [AST.STRING, "string"]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}, {
 		"input": "(123)--",
-		"expected": [[AST.DEC, [AST.PARENS, [AST.NUMBER, 123]]]]
+		"exception": {"code": "bad_lhs_postfix"}
 	}];
 
 });

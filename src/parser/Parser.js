@@ -25,6 +25,7 @@ define([
 	var F_NOIN = 1 << 3;
 
 
+	// incorrect replacement for uDDDD and xDD
 	// replaces control sequences with actual characters
 	function escapeStringLiteral(string) {
 		var string = string.slice(1, -1);
@@ -65,7 +66,7 @@ define([
 
 
 
-
+	// wise to use AST.EMPTY instead of AST.UNDEFINED?
 	function ArrayLiteral() {
 		var result = [AST.ARRAY];
 		while (!tokenizer.test(T_EOF)) {
@@ -427,38 +428,29 @@ define([
 
 
 	function DoStatement(flags) {
-		if (!tokenizer.next('do')) return;
-		var statement = Statement(flags | F_BREAK | F_REQUIRED);
+		var statement = Statement(flags | F_BREAK | F_CONTINUE | F_REQUIRED);
 		if (!tokenizer.next('while')) SyntaxError();
 		var expression = BracketExpression();
 		return [AST.DO_LOOP, statement, expression];
 	}
 
 	function WithStatement(flags) {
-		if (!tokenizer.next('with')) return;
 		var expression = BracketExpression();
 		var statement = Statement(flags | F_REQUIRED);
 		return [AST.WITH, expression, statement];
 	}
 
 	function WhileStatement(flags) {
-		if (!tokenizer.next('while')) return;
 		var expression = BracketExpression();
 		var statement = Statement(flags | F_BREAK | F_CONTINUE | F_REQUIRED);
 		return [AST.WHILE_LOOP, expression, statement];
 	}
 
-	// simplify
 	function IfStatement(flags) {
-		if (!tokenizer.next('if')) return;
-		// parse required bracket expression
 		var result = [AST.IF, BracketExpression()];
-		// parse required if statement
 		result.push(Statement(flags |= F_REQUIRED));
-		if (tokenizer.next('else')) {
-			// parse required else statement
+		if (tokenizer.next('else'))
 			result.push(Statement(flags));
-		}
 		return result;
 	}
 
@@ -674,11 +666,17 @@ define([
 		else if (tokenizer.next(';')) return ['EMPTY'];
 		else if (result = LabelledStatement(flags)) return result;
 		else if (result = Expression(flags));
-		else if (result = IfStatement(flags)) return result;
+
+		else if (tokenizer.next('if'))
+			return IfStatement(flags);
 
 		else if (result = ForStatement(flags)) return result;
-		else if (result = DoStatement(flags)) return result;
-		else if (result = WhileStatement(flags)) return result;
+
+		else if (tokenizer.next('do'))
+			return DoStatement(flags);
+
+		else if (tokenizer.next('while'))
+			return WhileStatement(flags);
 
 		else if (tokenizer.next('var'))
 			result = VariableStatement(flags);
@@ -695,7 +693,9 @@ define([
 		else if (tokenizer.next('break'))
 			result = BreakStatement(flags);
 
-		else if (result = WithStatement(flags)) return result;
+		else if (tokenizer.next('with'))
+			return WithStatement(flags);
+
 		else if (result = SwitchStatement(flags)) return result;
 
 		else if (tokenizer.next('try'))

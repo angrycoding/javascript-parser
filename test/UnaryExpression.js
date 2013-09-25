@@ -11,10 +11,10 @@ define('../src/Constants', function(AST) {
 		"expected": [[AST.TYPEOF, [AST.STRING, "string"]]]
 	}, {
 		"input": "++10",
-		"expected": [[AST.UINC, [AST.NUMBER, 10]]]
+		"exception": {"code": "bad_lhs_prefix"}
 	}, {
 		"input": "--10",
-		"expected": [[AST.UDEC, [AST.NUMBER, 10]]]
+		"exception": {"code": "bad_lhs_prefix"}
 	}, {
 		"input": "+10",
 		"expected": [[AST.UADD, [AST.NUMBER, 10]]]
@@ -224,10 +224,10 @@ define('../src/Constants', function(AST) {
 		"expected": [[AST.BNOT, [AST.TYPEOF, [AST.NUMBER, 10]]]]
 	}, {
 		"input": "~++10",
-		"expected": [[AST.BNOT, [AST.UINC, [AST.NUMBER, 10]]]]
+		"exception": {"code": "bad_lhs_prefix"}
 	}, {
 		"input": "~--10",
-		"expected": [[AST.BNOT, [AST.UDEC, [AST.NUMBER, 10]]]]
+		"exception": {"code": "bad_lhs_prefix"}
 	}, {
 		"input": "~+10",
 		"expected": [[AST.BNOT, [AST.UADD, [AST.NUMBER, 10]]]]
@@ -251,10 +251,10 @@ define('../src/Constants', function(AST) {
 		"expected": [[AST.NOT, [AST.TYPEOF, [AST.NUMBER, 10]]]]
 	}, {
 		"input": "!++10",
-		"expected": [[AST.NOT, [AST.UINC, [AST.NUMBER, 10]]]]
+		"exception": {"code": "bad_lhs_prefix"}
 	}, {
 		"input": "!--10",
-		"expected": [[AST.NOT, [AST.UDEC, [AST.NUMBER, 10]]]]
+		"exception": {"code": "bad_lhs_prefix"}
 	}, {
 		"input": "!+10",
 		"expected": [[AST.NOT, [AST.UADD, [AST.NUMBER, 10]]]]

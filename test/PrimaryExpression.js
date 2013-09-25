@@ -13,6 +13,9 @@ define('../src/Constants', function(AST) {
 		"input": "false",
 		"expected": [[AST.FALSE]]
 	}, {
+		"input": "window",
+		"expected": [[AST.SELECTOR, "window"]]
+	}, {
 		"input": "32",
 		"expected": [[AST.NUMBER, 32]]
 	}, {
@@ -124,39 +127,87 @@ define('../src/Constants', function(AST) {
 		"input": "'str\"ing'",
 		"expected": [[AST.STRING, "str\"ing"]]
 	}, {
+		"input": "\"str\\\\ing\"",
+		"expected": [[AST.STRING, "str\\ing"]]
+	}, {
+		"input": "\"str\\bing\"",
+		"expected": [[AST.STRING, "str\bing"]]
+	}, {
+		"input": "\"str\\fing\"",
+		"expected": [[AST.STRING, "str\fing"]]
+	}, {
+		"input": "\"str\\ning\"",
+		"expected": [[AST.STRING, "str\ning"]]
+	}, {
+		"input": "\"str\\ring\"",
+		"expected": [[AST.STRING, "str\ring"]]
+	}, {
+		"input": "\"str\\ting\"",
+		"expected": [[AST.STRING, "str\ting"]]
+	}, {
+		"input": "\"str\\uCAFEing\"",
+		"expected": [[AST.STRING, "str\uCAFEing"]]
+	}, {
+		"input": "\"str\\xCDing\"",
+		"expected": [[AST.STRING, "str\xCDing"]]
+	}, {
+		"input": "\"str\\aing\"",
+		"expected": [[AST.STRING, "str\aing"]]
+	}, {
+		"input": "\"str\\cing\"",
+		"expected": [[AST.STRING, "str\cing"]]
+	}, {
+		"input": "\"str\\eing\"",
+		"expected": [[AST.STRING, "str\eing"]]
+	}, {
+		"input": "\"str\\ging\"",
+		"expected": [[AST.STRING, "str\ging"]]
+	}, {
+		"input": "\"str\\Bing\"",
+		"expected": [[AST.STRING, "str\Bing"]]
+	}, {
+		"input": "'str\\\\ing'",
+		"expected": [[AST.STRING, "str\\ing"]]
+	}, {
+		"input": "'str\\bing'",
+		"expected": [[AST.STRING, "str\bing"]]
+	}, {
+		"input": "'str\\fing'",
+		"expected": [[AST.STRING, "str\fing"]]
+	}, {
+		"input": "'str\\ning'",
+		"expected": [[AST.STRING, "str\ning"]]
+	}, {
+		"input": "'str\\ring'",
+		"expected": [[AST.STRING, "str\ring"]]
+	}, {
+		"input": "'str\\ting'",
+		"expected": [[AST.STRING, "str\ting"]]
+	}, {
+		"input": "'str\\uCAFEing'",
+		"expected": [[AST.STRING, "str\uCAFEing"]]
+	}, {
+		"input": "'str\\xCDing'",
+		"expected": [[AST.STRING, "str\xCDing"]]
+	}, {
+		"input": "'str\\aing'",
+		"expected": [[AST.STRING, "str\aing"]]
+	}, {
+		"input": "'str\\cing'",
+		"expected": [[AST.STRING, "str\cing"]]
+	}, {
+		"input": "'str\\eing'",
+		"expected": [[AST.STRING, "str\eing"]]
+	}, {
+		"input": "'str\\ging'",
+		"expected": [[AST.STRING, "str\ging"]]
+	}, {
+		"input": "'str\\Bing'",
+		"expected": [[AST.STRING, "str\Bing"]]
+	}, {
 		"input": "(null)",
 		"expected": [[AST.PARENS, [AST.NULL]]]
 	}, {
-		"input": "(this)",
-		"expected": [[AST.PARENS, [AST.THIS]]]
-	},
-
-	// correctException
-	{
-		"input": "(this",
-		"exception": {"expected": ")", "found": -1}
-	},
-
-	// wrongException
-	{
-		"input": "(this",
-		"exception": {"expected": "x)", "found": -1}
-	},
-
-	// unexpectedException
-	{
-		"input": "(this",
-		"expected": [[AST.PARENS, [AST.THIS]]]
-	},
-
-	// unexpectedSuccess
-	{
-		"input": "(this)",
-		"exception": {"expected": ")", "found": -1}
-	},
-
-
-	{
 		"input": "(this)",
 		"expected": [[AST.PARENS, [AST.THIS]]]
 	}, {
@@ -165,6 +216,9 @@ define('../src/Constants', function(AST) {
 	}, {
 		"input": "(false)",
 		"expected": [[AST.PARENS, [AST.FALSE]]]
+	}, {
+		"input": "(window)",
+		"expected": [[AST.PARENS, [AST.SELECTOR, "window"]]]
 	}, {
 		"input": "(32)",
 		"expected": [[AST.PARENS, [AST.NUMBER, 32]]]
@@ -175,38 +229,80 @@ define('../src/Constants', function(AST) {
 		"input": "(0.32)",
 		"expected": [[AST.PARENS, [AST.NUMBER, 0.32]]]
 	}, {
+		"input": "(43.9)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 43.9]]]
+	}, {
 		"input": "(32e3)",
 		"expected": [[AST.PARENS, [AST.NUMBER, 32e3]]]
 	}, {
-		"input": "(.32e4)",
-		"expected": [[AST.PARENS, [AST.NUMBER, .32e4]]]
+		"input": "(.32e5)",
+		"expected": [[AST.PARENS, [AST.NUMBER, .32e5]]]
 	}, {
-		"input": "(0.32e5)",
-		"expected": [[AST.PARENS, [AST.NUMBER, 0.32e5]]]
+		"input": "(0.32e2)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 0.32e2]]]
+	}, {
+		"input": "(43.9e8)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 43.9e8]]]
 	}, {
 		"input": "(32e+3)",
 		"expected": [[AST.PARENS, [AST.NUMBER, 32e+3]]]
 	}, {
-		"input": "(.32e+4)",
-		"expected": [[AST.PARENS, [AST.NUMBER, .32e+4]]]
+		"input": "(.32e+5)",
+		"expected": [[AST.PARENS, [AST.NUMBER, .32e+5]]]
 	}, {
-		"input": "(0.32e+5)",
-		"expected": [[AST.PARENS, [AST.NUMBER, 0.32e+5]]]
+		"input": "(0.32e+2)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 0.32e+2]]]
+	}, {
+		"input": "(43.9e+8)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 43.9e+8]]]
 	}, {
 		"input": "(32e-3)",
 		"expected": [[AST.PARENS, [AST.NUMBER, 32e-3]]]
 	}, {
-		"input": "(.32e-4)",
-		"expected": [[AST.PARENS, [AST.NUMBER, .32e-4]]]
+		"input": "(.32e-5)",
+		"expected": [[AST.PARENS, [AST.NUMBER, .32e-5]]]
 	}, {
-		"input": "(0.32e-5)",
-		"expected": [[AST.PARENS, [AST.NUMBER, 0.32e-5]]]
+		"input": "(0.32e-2)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 0.32e-2]]]
 	}, {
-		"input": "(0x41)",
-		"expected": [[AST.PARENS, [AST.NUMBER, 0x41]]]
+		"input": "(43.9e-8)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 4.39e-7]]]
 	}, {
-		"input": "(0X42)",
-		"expected": [[AST.PARENS, [AST.NUMBER, 0X42]]]
+		"input": "(32E3)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 32E3]]]
+	}, {
+		"input": "(.32E5)",
+		"expected": [[AST.PARENS, [AST.NUMBER, .32E5]]]
+	}, {
+		"input": "(0.32E2)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 0.32E2]]]
+	}, {
+		"input": "(43.9E8)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 43.9E8]]]
+	}, {
+		"input": "(32E+3)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 32E+3]]]
+	}, {
+		"input": "(.32E+5)",
+		"expected": [[AST.PARENS, [AST.NUMBER, .32E+5]]]
+	}, {
+		"input": "(0.32E+2)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 0.32E+2]]]
+	}, {
+		"input": "(43.9E+8)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 43.9E+8]]]
+	}, {
+		"input": "(32E-3)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 32E-3]]]
+	}, {
+		"input": "(.32E-5)",
+		"expected": [[AST.PARENS, [AST.NUMBER, .32E-5]]]
+	}, {
+		"input": "(0.32E-2)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 0.32E-2]]]
+	}, {
+		"input": "(43.9E-8)",
+		"expected": [[AST.PARENS, [AST.NUMBER, 43.9E-8]]]
 	}, {
 		"input": "(0xABCD)",
 		"expected": [[AST.PARENS, [AST.NUMBER, 0xABCD]]]
@@ -214,18 +310,12 @@ define('../src/Constants', function(AST) {
 		"input": "(\"string\")",
 		"expected": [[AST.PARENS, [AST.STRING, "string"]]]
 	}, {
-		"input": "(\"stri(ng\")",
-		"expected": [[AST.PARENS, [AST.STRING, "stri(ng"]]]
+		"input": "('string')",
+		"expected": [[AST.PARENS, [AST.STRING, "string"]]]
 	}, {
-		"input": "(\"stri)ng\")",
-		"expected": [[AST.PARENS, [AST.STRING, "stri)ng"]]]
+		"input": "([(1), 2])",
+		"expected": [[AST.PARENS, [AST.ARRAY, [AST.PARENS, [AST.NUMBER, 1]], [AST.NUMBER, 2]]]]
 	}, {
-		"input": "(\"str(i)ng\")",
-		"expected": [[AST.PARENS, [AST.STRING, "str(i)ng"]]]
-	},
-
-
-	{
 		"input": "[]",
 		"expected": [[AST.ARRAY]]
 	}, {
@@ -244,8 +334,47 @@ define('../src/Constants', function(AST) {
 		"input": "[1]",
 		"expected": [[AST.ARRAY, [AST.NUMBER, 1]]]
 	}, {
+		"input": "[null]",
+		"expected": [[AST.ARRAY, [AST.NULL]]]
+	}, {
+		"input": "[this]",
+		"expected": [[AST.ARRAY, [AST.THIS]]]
+	}, {
+		"input": "[true]",
+		"expected": [[AST.ARRAY, [AST.TRUE]]]
+	}, {
+		"input": "[false]",
+		"expected": [[AST.ARRAY, [AST.FALSE]]]
+	}, {
+		"input": "[window]",
+		"expected": [[AST.ARRAY, [AST.SELECTOR, "window"]]]
+	}, {
+		"input": "[.34]",
+		"expected": [[AST.ARRAY, [AST.NUMBER, 0.34]]]
+	}, {
+		"input": "[3.14e0]",
+		"expected": [[AST.ARRAY, [AST.NUMBER, 3.14e0]]]
+	}, {
+		"input": "[3.14e+2]",
+		"expected": [[AST.ARRAY, [AST.NUMBER, 3.14e+2]]]
+	}, {
+		"input": "[3.14E-2]",
+		"expected": [[AST.ARRAY, [AST.NUMBER, 3.14e-2]]]
+	}, {
+		"input": "[0xC0FFEE]",
+		"expected": [[AST.ARRAY, [AST.NUMBER, 0xC0FFEE]]]
+	}, {
+		"input": "['string']",
+		"expected": [[AST.ARRAY, [AST.STRING, "string"]]]
+	}, {
+		"input": "[\"string\"]",
+		"expected": [[AST.ARRAY, [AST.STRING, "string"]]]
+	}, {
 		"input": "[1, 2]",
 		"expected": [[AST.ARRAY, [AST.NUMBER, 1], [AST.NUMBER, 2]]]
+	}, {
+		"input": "[(1), 2]",
+		"expected": [[AST.ARRAY, [AST.PARENS, [AST.NUMBER, 1]], [AST.NUMBER, 2]]]
 	}, {
 		"input": "[1, 2, 3]",
 		"expected": [[AST.ARRAY, [AST.NUMBER, 1], [AST.NUMBER, 2], [AST.NUMBER, 3]]]
@@ -288,8 +417,10 @@ define('../src/Constants', function(AST) {
 	}, {
 		"input": "([,1,,2,,])",
 		"expected": [[AST.PARENS, [AST.ARRAY, [AST.UNDEFINED], [AST.NUMBER, 1], [AST.UNDEFINED], [AST.NUMBER, 2], [AST.UNDEFINED]]]]
+	}, {
+		"input": "([,1,,2,[,[],],])",
+		"expected": [[AST.PARENS, [AST.ARRAY, [AST.UNDEFINED], [AST.NUMBER, 1], [AST.UNDEFINED], [AST.NUMBER, 2], [AST.ARRAY, [AST.UNDEFINED], [AST.ARRAY]]]]]
 	},
-
 
 
 
@@ -347,9 +478,49 @@ define('../src/Constants', function(AST) {
 	}, {
 		"input": "({1: 2, 3: true, 5: '6'})",
 		"expected": [[AST.PARENS, [AST.OBJECT, ['1', [AST.NUMBER, 2]], ['3', [AST.TRUE]], ['5', [AST.STRING, '6']]]]]
+	}
+
+	/*
+
+	, {
+		"input": "\"",
+		"exception": {"code": "unexpected_illegal"}
+	}, {
+		"input": "\'",
+		"exception": {"code": "unexpected_illegal"}
 	},
 
 
+	{
+		"input": "()",
+		"exception": {"code": "unexpected_token"}
+	}
+
+	// correctException
+	{
+		"input": "(this",
+		"exception": {"expected": ")", "found": -1}
+	},
+
+	// wrongException
+	{
+		"input": "(this",
+		"exception": {"expected": "x)", "found": -1}
+	},
+
+	// unexpectedException
+	{
+		"input": "(this",
+		"expected": [[AST.PARENS, [AST.THIS]]]
+	},
+
+	// unexpectedSuccess
+	{
+		"input": "(this)",
+		"exception": {"expected": ")", "found": -1}
+	},
+
+	*/
 
 	];
 
