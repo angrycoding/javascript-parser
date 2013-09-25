@@ -8,43 +8,11 @@
 
 		<script id="script" type="text/plain">
 
-			var CDATA = <![CDATA[
-				hello
-				world
-				2 x 2 = 4
-			]]>;
 
-			alert(CDATA);
+			var x = 10;
 
-			var widgetCSS = <style type="text/css">
-				.item {
-					margin-bottom: 5px;
-					border-radius: 6px;
-					border: 1px solid red;
-				}
-			</style>;
-
-			alert(widgetCSS);
-
-			document.body.appendChild(widgetCSS);
-
-			var f = document.createElement('a');
-			f.setAttribute('href', 'http://www.google.com/');
-			f.setAttribute('target', '_blank');
-			f.innerHTML = 'google';
-			document.body.appendChild(f);
-
-			var x = <div class="item">
-
-					foo: <strong>bar</strong>
-					<input type="button" value="Кнопка" onclick="alert(1);" />
-					<textarea><![CDATA[
-						<div>XXXX</div>
-					]]></textarea>
-				</div>;
-
-			for (var c = 0; c < 3; c++) {
-				document.body.appendChild(x.cloneNode(true));
+			while (x--) {
+				alert(x);
 			}
 
 

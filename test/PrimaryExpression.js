@@ -123,19 +123,12 @@ define('../src/Constants', function(AST) {
 	}, {
 		"input": "'str\"ing'",
 		"expected": [[AST.STRING, "str\"ing"]]
-	},
-
-
-	// correctResult
-	{
+	}, {
 		"input": "(null)",
 		"expected": [[AST.PARENS, [AST.NULL]]]
-	},
-
-	// wrongResult
-	{
+	}, {
 		"input": "(this)",
-		"expected": [[AST.PARENS, [AST.NULL]]]
+		"expected": [[AST.PARENS, [AST.THIS]]]
 	},
 
 	// correctException

@@ -1,19 +1,42 @@
 define([
 	'../Constants',
+	'Messages',
 	'TokenStream',
 	'XMLParser',
 	'RegexpParser'
-], function(AST, tokenizer, XMLParser, RegexpParser) {
+], function(AST, Messages, tokenizer, XMLParser, RegexpParser) {
 
 	var Tokenizer = tokenizer.constructor;
+	var T_EOF = Tokenizer.T_EOF;
+	var T_ERR = Tokenizer.T_ERR;
 
 	// used to convert control characters into regular characters
 	var stringEscape = /\\(x[0-9A-F]{2}|u[0-9A-F]{4}|.)/g;
 
 	var fileName = 'FILENAME';
 
-	var SILENT_FLAG = 1 << 0;
-	var NO_IN_FLAG = 1 << 1;
+
+
+	var LABELS = {};
+
+	// disallow empty production
+	var F_REQUIRED = 1 << 0;
+	// allow break statement
+	var F_BREAK = 1 << 1;
+	// allow continue statement
+	var F_CONTINUE = 1 << 2;
+	// disallow "in" in expression
+	var F_NOIN = 1 << 3;
+
+
+	function placeHolders(str, replacements) {
+		return str.replace(/\{([^\}]*)\}/g, function(match, key) {
+			return (
+				replacements.hasOwnProperty(key) ?
+				replacements[key] : match
+			);
+		});
+	}
 
 	// replaces control sequences with actual characters
 	function escapeStringLiteral(string) {
@@ -40,52 +63,58 @@ define([
 		});
 	}
 
-	function ParseError(expected) {
 
-		if (!(this instanceof arguments.callee) ) {
+	function ParseError() {
+
+		if (!(this instanceof arguments.callee))
+			throw new ParseError();
+
+		var found = tokenizer.next();
+
+		if (found.type === T_EOF)
+			SyntaxError(Messages.UNEXPECTED_EOF);
+
+		else if (found.type === T_ERR)
+			SyntaxError(Messages.UNEXPECTED_ILLEGAL);
+
+		else SyntaxError(Messages.UNEXPECTED_TOKEN, found.value);
+	}
+
+
+	// ADD ERROR CODE IN ORDER TO CONTROL
+	function SyntaxError(args) {
+
+		if (!(this instanceof arguments.callee)) {
 			var args = Array.prototype.slice.call(arguments);
-			if (args.length) throw new ParseError(args);
-			throw new ParseError([]);
+			throw new SyntaxError(args);
 		}
 
-		var errorMessage;
-		var found = tokenizer.getFragment();
 		var lineNumber = tokenizer.getLineNumber();
 
-		if (!expected.length) {
-			errorMessage = (
-				fileName + '(' + lineNumber + ') ' +
-				'Syntax error: unexpected token ' + found
-			);
-		} else {
+		var message = placeHolders(Messages.SYNTAX_ERROR, {
+			fileName: fileName,
+			lineNumber: lineNumber,
+			message: placeHolders(args.shift(), args)
+		});
 
-			expected = expected.join('" or "');
-
-			errorMessage = (
-				fileName + '(' + lineNumber +
-				') Syntax error: expected "' + expected +
-				'" but "' + found + '" found'
-			);
-		}
 
 		return {
 			file: fileName,
 			line: lineNumber,
-			expected: expected,
-			found: found,
 			toString: function() {
-				return errorMessage;
+				return message;
 			}
 		};
 	}
+
 
 	function LHSExpression(expression, position) {
 		while (expression[0] === AST.PARENS)
 			expression = expression[1];
 		if (expression[0] !== AST.SELECTOR) {
-			if (position === -1) ParseError('Invalid left-hand side expression in prefix operation');
-			if (position === 1) ParseError('Invalid left-hand side expression in postfix operation')
-			ParseError('Invalid left-hand side in assignment');
+			if (position === -1) SyntaxError(Messages.LHS_PREFIX);
+			if (position === 1) SyntaxError(Messages.LHS_POSTFIX);
+			SyntaxError(Messages.LHS_ASSIGNMENT);
 		}
 		return expression;
 	}
@@ -95,15 +124,16 @@ define([
 
 	function ArrayLiteral() {
 		var result = [AST.ARRAY];
-		while (!tokenizer.test(Tokenizer.T_EOF)) {
+		while (!tokenizer.test(T_EOF)) {
 			while (tokenizer.next(','))
 				result.push([AST.UNDEFINED]);
 			if (tokenizer.test(']')) break;
-			result.push(AssignmentExpression());
+			// parse required expression
+			result.push(AssignmentExpression(F_REQUIRED));
 			if (tokenizer.test(']')) break;
-			if (!tokenizer.next(',')) ParseError(',', ']');
+			if (!tokenizer.next(',')) ParseError();
 		}
-		if (!tokenizer.next(']')) ParseError(']');
+		if (!tokenizer.next(']')) ParseError();
 		return result;
 	}
 
@@ -119,27 +149,26 @@ define([
 			else if (key = tokenizer.next(tokenizer.KEYWORD))
 				key = key.value;
 			else break;
-			if (!tokenizer.next(':')) ParseError(':');
-			result.push([key, AssignmentExpression()]);
+			if (!tokenizer.next(':')) ParseError();
+			// parse required expression
+			result.push([key, AssignmentExpression(F_REQUIRED)]);
 		} while (tokenizer.next(','));
-		if (!tokenizer.next('}')) ParseError('}');
+		if (!tokenizer.next('}')) ParseError();
 		return result;
 	}
 
 	function FunctionExpression() {
 		var args = [], name = tokenizer.next(tokenizer.ID);
 		name = (name ? name.value : null);
-		if (!tokenizer.next('(')) ParseError('(');
+		if (!tokenizer.next('(')) ParseError();
 		if (!tokenizer.test(')')) do {
 			var arg = tokenizer.next(tokenizer.ID);
-			if (!arg) ParseError('IDENTIFIER', ')');
+			if (!arg) ParseError();
 			args.push(arg.value);
 		} while (tokenizer.next(','));
-		if (!tokenizer.next(')')) ParseError(')');
-		return [AST.FUNCTION, name, args, Block(true)];
+		if (!tokenizer.next(')')) ParseError();
+		return [AST.FUNCTION, name, args, Block(F_REQUIRED)];
 	}
-
-
 
 
 	function PrimaryExpression(flags) {
@@ -151,19 +180,16 @@ define([
 
 		if (tokenizer.test(tokenizer.ID))
 			return [AST.SELECTOR, tokenizer.next().value];
-
 		if (tokenizer.test(tokenizer.DECIMAL))
 			return [AST.NUMBER, parseFloat(tokenizer.next().value)];
-
 		if (tokenizer.test(tokenizer.HEX))
 			return [AST.NUMBER, parseInt(tokenizer.next().value, 16)];
-
 		if (tokenizer.test(tokenizer.STRING))
 			return [AST.STRING, escapeStringLiteral(tokenizer.next().value)];
 
 		if (tokenizer.next('(')) {
-			var expression = Expression();
-			if (!tokenizer.next(')')) ParseError(')');
+			var expression = Expression(F_REQUIRED);
+			if (!tokenizer.next(')')) ParseError();
 			return [AST.PARENS, expression];
 		}
 
@@ -174,13 +200,13 @@ define([
 		if (tokenizer.next('{')) return ObjectLiteral();
 		if (tokenizer.next('function')) return FunctionExpression();
 
-		if (!(flags & SILENT_FLAG)) ParseError('EXPRESSION');
+		if (flags & F_REQUIRED) ParseError();
 	}
 
 	function AllocationExpression(flags) {
-		if (tokenizer.next('new'))
-			return [AST.NEW, CallExpression()];
-		else return PrimaryExpression(flags);
+		if (tokenizer.next('new')) return [
+			AST.NEW, CallExpression(F_REQUIRED)
+		]; else return PrimaryExpression(flags);
 	}
 
 	function CallExpression(flags) {
@@ -193,27 +219,28 @@ define([
 				if (!tokenizer.test([
 					tokenizer.ID,
 					tokenizer.KEYWORD
-				])) ParseError('identifier');
+				])) ParseError();
 				if (left[0] !== AST.SELECTOR)
 					left = [AST.SELECTOR, left];
 				left.push(tokenizer.next().value);
 			}
 
 			else if (tokenizer.next('[')) {
-				if (tokenizer.next(']'))
-					ParseError('EXPRESSION');
+				if (tokenizer.test(']'))
+					ParseError();
+				else tokenizer.next();
 				if (left[0] !== AST.SELECTOR)
 					left = [AST.SELECTOR, left];
-				left.push(Expression());
-				if (!tokenizer.next(']')) ParseError(']');
+				left.push(Expression(F_REQUIRED));
+				if (!tokenizer.next(']')) ParseError();
 			}
 
 			else if (tokenizer.next('(')) {
 				left = [AST.CALL, left];
 				if (!tokenizer.test(')')) do {
-					left.push(AssignmentExpression());
+					left.push(AssignmentExpression(F_REQUIRED));
 				} while (tokenizer.next(','));
-				if (!tokenizer.next(')')) ParseError(')');
+				if (!tokenizer.next(')')) ParseError();
 			}
 
 			else break;
@@ -221,7 +248,6 @@ define([
 
 		return left;
 	}
-
 
 	// precedence 3
 	function PostfixExpression(flags) {
@@ -239,23 +265,23 @@ define([
 	function UnaryExpression(flags) {
 		return (
 			tokenizer.next('delete') &&
-			[AST.DELETE, UnaryExpression()] ||
+			[AST.DELETE, UnaryExpression(F_REQUIRED)] ||
 			tokenizer.next('void') &&
-			[AST.VOID, UnaryExpression()] ||
+			[AST.VOID, UnaryExpression(F_REQUIRED)] ||
 			tokenizer.next('typeof') &&
-			[AST.TYPEOF, UnaryExpression()] ||
+			[AST.TYPEOF, UnaryExpression(F_REQUIRED)] ||
 			tokenizer.next('+') &&
-			[AST.UADD, UnaryExpression()] ||
+			[AST.UADD, UnaryExpression(F_REQUIRED)] ||
 			tokenizer.next('-') &&
-			[AST.USUB, UnaryExpression()] ||
+			[AST.USUB, UnaryExpression(F_REQUIRED)] ||
 			tokenizer.next('~') &&
-			[AST.BNOT, UnaryExpression()] ||
+			[AST.BNOT, UnaryExpression(F_REQUIRED)] ||
 			tokenizer.next('!') &&
-			[AST.NOT, UnaryExpression()] ||
+			[AST.NOT, UnaryExpression(F_REQUIRED)] ||
 			tokenizer.next('++') &&
-			[AST.UINC, LHSExpression(UnaryExpression(), -1)] ||
+			[AST.UINC, LHSExpression(UnaryExpression(F_REQUIRED), -1)] ||
 			tokenizer.next('--') &&
-			[AST.UDEC, LHSExpression(UnaryExpression(), -1)] ||
+			[AST.UDEC, LHSExpression(UnaryExpression(F_REQUIRED), -1)] ||
 			PostfixExpression(flags)
 		);
 	}
@@ -265,11 +291,11 @@ define([
 		var left = UnaryExpression(flags);
 		if (left) while (
 			tokenizer.next('*') &&
-			(left = [AST.MUL, left, UnaryExpression()]) ||
+			(left = [AST.MUL, left, UnaryExpression(F_REQUIRED)]) ||
 			tokenizer.next('/') &&
-			(left = [AST.DIV, left, UnaryExpression()]) ||
+			(left = [AST.DIV, left, UnaryExpression(F_REQUIRED)]) ||
 			tokenizer.next('%') &&
-			(left = [AST.MOD, left, UnaryExpression()])
+			(left = [AST.MOD, left, UnaryExpression(F_REQUIRED)])
 		);
 		return left;
 	}
@@ -279,9 +305,9 @@ define([
 		var left = MultiplicativeExpression(flags);
 		if (left) while (
 			tokenizer.next('+') &&
-			(left = [AST.ADD, left, MultiplicativeExpression()]) ||
+			(left = [AST.ADD, left, MultiplicativeExpression(F_REQUIRED)]) ||
 			tokenizer.next('-') &&
-			(left = [AST.SUB, left, MultiplicativeExpression()])
+			(left = [AST.SUB, left, MultiplicativeExpression(F_REQUIRED)])
 		);
 		return left;
 	}
@@ -291,31 +317,32 @@ define([
 		var left = AdditiveExpression(flags);
 		if (left) while (
 			tokenizer.next('<<') &&
-			(left = [AST.BSHL, left, AdditiveExpression()]) ||
+			(left = [AST.BSHL, left, AdditiveExpression(F_REQUIRED)]) ||
 			tokenizer.next('>>') &&
-			(left = [AST.BSHR, left, AdditiveExpression()]) ||
+			(left = [AST.BSHR, left, AdditiveExpression(F_REQUIRED)]) ||
 			tokenizer.next('>>>') &&
-			(left = [AST.BSHRZ, left, AdditiveExpression()])
+			(left = [AST.BSHRZ, left, AdditiveExpression(F_REQUIRED)])
 		);
 		return left;
 	}
 
 	// precedence 8
 	function RelationalExpression(flags) {
-		var left = ShiftExpression(flags &~ NO_IN_FLAG);
-		if (flags &= NO_IN_FLAG, flags = !flags, left) while (
-			(flags && tokenizer.next('in')) &&
-			(left = [AST.IN, left, ShiftExpression()]) ||
+		var inAllowed = !(flags & F_NOIN);
+		var left = ShiftExpression(flags &~ F_NOIN);
+		if (left) while (
+			(inAllowed && tokenizer.next('in')) &&
+			(left = [AST.IN, left, ShiftExpression(F_REQUIRED)]) ||
 			tokenizer.next('instanceof') &&
-			(left = [AST.INSTANCEOF, left, ShiftExpression()]) ||
+			(left = [AST.INSTANCEOF, left, ShiftExpression(F_REQUIRED)]) ||
 			tokenizer.next('<') &&
-			(left = [AST.LT, left, ShiftExpression()]) ||
+			(left = [AST.LT, left, ShiftExpression(F_REQUIRED)]) ||
 			tokenizer.next('>') &&
-			(left = [AST.GT, left, ShiftExpression()]) ||
+			(left = [AST.GT, left, ShiftExpression(F_REQUIRED)]) ||
 			tokenizer.next('<=') &&
-			(left = [AST.LE, left, ShiftExpression()]) ||
+			(left = [AST.LE, left, ShiftExpression(F_REQUIRED)]) ||
 			tokenizer.next('>=') &&
-			(left = [AST.GE, left, ShiftExpression()])
+			(left = [AST.GE, left, ShiftExpression(F_REQUIRED)])
 		);
 		return left;
 	}
@@ -323,7 +350,7 @@ define([
 	// precedence 9
 	function EqualityExpression(flags) {
 		var left = RelationalExpression(flags);
-		if (flags &= ~SILENT_FLAG, left) while (
+		if (flags |= F_REQUIRED, left) while (
 			tokenizer.next('==') &&
 			(left = [AST.EQ, left, RelationalExpression(flags)]) ||
 			tokenizer.next('===') &&
@@ -339,7 +366,7 @@ define([
 	// precedence 10
 	function BitwiseANDExpression(flags) {
 		var left = EqualityExpression(flags);
-		if (flags &= ~SILENT_FLAG, left) while (
+		if (flags |= F_REQUIRED, left) while (
 			tokenizer.next('&') &&
 			(left = [AST.BAND, left, EqualityExpression(flags)])
 		);
@@ -349,7 +376,7 @@ define([
 	// precedence 11
 	function BitwiseXORExpression(flags) {
 		var left = BitwiseANDExpression(flags);
-		if (flags &= ~SILENT_FLAG, left) while (
+		if (flags |= F_REQUIRED, left) while (
 			tokenizer.next('^') &&
 			(left = [AST.BXOR, left, BitwiseANDExpression(flags)])
 		);
@@ -359,7 +386,7 @@ define([
 	// precedence 12
 	function BitwiseORExpression(flags) {
 		var left = BitwiseXORExpression(flags);
-		if (flags &= ~SILENT_FLAG, left) while (
+		if (flags |= F_REQUIRED, left) while (
 			tokenizer.next('|') &&
 			(left = [AST.BOR, left, BitwiseXORExpression(flags)])
 		);
@@ -369,7 +396,7 @@ define([
 	// precedence 13
 	function LogicalANDExpression(flags) {
 		var left = BitwiseORExpression(flags);
-		if (flags &= ~SILENT_FLAG, left) while (
+		if (flags |= F_REQUIRED, left) while (
 			tokenizer.next('&&') &&
 			(left = [AST.AND, left, BitwiseORExpression(flags)])
 		);
@@ -379,7 +406,7 @@ define([
 	// precedence 14
 	function LogicalORExpression(flags) {
 		var left = LogicalANDExpression(flags);
-		if (flags &= ~SILENT_FLAG, left) while (
+		if (flags |= F_REQUIRED, left) while (
 			tokenizer.next('||') &&
 			(left = [AST.OR, left, LogicalANDExpression(flags)])
 		);
@@ -389,11 +416,11 @@ define([
 	// precedence 15
 	function ConditionalExpression(flags) {
 		var expression = LogicalORExpression(flags);
-		if (expression && tokenizer.next('?')) {
+		if (flags |= F_REQUIRED, expression && tokenizer.next('?')) {
 			expression = [AST.TERNARY, expression];
-			expression.push(AssignmentExpression());
-			if (!tokenizer.next(':')) ParseError(':');
-			expression.push(AssignmentExpression(flags &~ SILENT_FLAG));
+			expression.push(AssignmentExpression(flags));
+			if (!tokenizer.next(':')) ParseError();
+			expression.push(AssignmentExpression(flags));
 			return expression;
 		}
 		return expression;
@@ -402,7 +429,7 @@ define([
 	// precedence 17
 	function AssignmentExpression(flags) {
 		var expression = ConditionalExpression(flags);
-		if (flags &= ~SILENT_FLAG, expression) return (
+		if (flags |= F_REQUIRED, expression) return (
 			tokenizer.next('=') &&
 			[AST.ASSIGN, LHSExpression(expression), AssignmentExpression(flags)] ||
 			tokenizer.next('*=') &&
@@ -434,8 +461,7 @@ define([
 	// precedence 18
 	function Expression(flags) {
 		var expression = AssignmentExpression(flags);
-		if (expression && tokenizer.next(',')) {
-			flags &= ~SILENT_FLAG;
+		if (flags |= F_REQUIRED, expression && tokenizer.next(',')) {
 			expression = [AST.MULTIPLE, expression];
 			do { expression.push(AssignmentExpression(flags)); }
 			while (tokenizer.next(','));
@@ -444,76 +470,58 @@ define([
 	}
 
 
+
+
+
+
 	function BracketExpression() {
-		if (!tokenizer.next('(')) ParseError('(');
-		var expression = Expression();
-		if (!tokenizer.next(')')) ParseError(')');
+		if (!tokenizer.next('(')) ParseError();
+		var expression = Expression(F_REQUIRED);
+		if (!tokenizer.next(')')) ParseError();
 		return expression;
 	}
 
 
+	function DoStatement(flags) {
+		if (!tokenizer.next('do')) return;
+		var statement = Statement(flags | F_BREAK | F_REQUIRED);
+		if (!tokenizer.next('while')) ParseError();
+		var expression = BracketExpression();
+		return [AST.DO_LOOP, statement, expression];
+	}
+
+	function WithStatement(flags) {
+		if (!tokenizer.next('with')) return;
+		var expression = BracketExpression();
+		var statement = Statement(flags | F_REQUIRED);
+		return [AST.WITH, expression, statement];
+	}
+
+	function WhileStatement(flags) {
+		if (!tokenizer.next('while')) return;
+		var expression = BracketExpression();
+		var statement = Statement(flags | F_BREAK | F_CONTINUE | F_REQUIRED);
+		return [AST.WHILE_LOOP, expression, statement];
+	}
+
 	// simplify
-	function DoStatement() {
-		if (tokenizer.next('do')) return [
-			AST.DO_LOOP, Statement(true), (
-				tokenizer.next('while') &&
-				BracketExpression()
-			) || ParseError('while')
-		];
-	}
-
-	// completed
-	function WithStatement() {
-		if (tokenizer.next('with')) return [
-			AST.WITH,
-			BracketExpression(),
-			Statement(true)
-		];
-	}
-
-	// completed
-	function WhileStatement() {
-		if (tokenizer.next('while')) return [
-			AST.WHILE_LOOP,
-			BracketExpression(),
-			Statement(true)
-		];
-	}
-
-	// completed
-	function IfStatement() {
-		if (tokenizer.next('if')) {
-			var result = [AST.IF, BracketExpression()];
-			result.push(Statement(true));
-			if (tokenizer.next('else'))
-				result.push(Statement(true));
-			return result;
+	function IfStatement(flags) {
+		if (!tokenizer.next('if')) return;
+		// parse required bracket expression
+		var result = [AST.IF, BracketExpression()];
+		// parse required if statement
+		result.push(Statement(flags |= F_REQUIRED));
+		if (tokenizer.next('else')) {
+			// parse required else statement
+			result.push(Statement(flags));
 		}
+		return result;
 	}
 
-	// completed: refactor to simplify?
-	function TryStatement() {
-		if (!tokenizer.next('try')) return;
-		var result = [Block(true)];
-		if (tokenizer.next('catch')) {
-			if (!tokenizer.next('(')) ParseError('(');
-			var varName = tokenizer.next(tokenizer.ID);
-			if (!varName) parseError('identifier');
-			result.push(varName.value);
-			if (!tokenizer.next(')')) ParseError(')');
-			result.push(Block(true));
-		}
-		if (tokenizer.next('finally'))
-			result.push(Block(true));
-		if (result.length < 2) ParseError('catch', 'finally');
-		return [AST.TRY, result];
-	}
-
-
-	// simplify!!!!
+	// INCOMPLETE AT ALL: simplify!!!!
 	function ForStatement() {
 		if (!tokenizer.next('for')) return;
-		if (!tokenizer.next('(')) ParseError('(');
+		if (!tokenizer.next('(')) ParseError();
 
 		var result = (
 			tokenizer.test('var') ?
@@ -524,15 +532,15 @@ define([
 
 		if (tokenizer.next(';')) {
 			result = [AST.FOR_LOOP, result];
-			result.push(Expression(SILENT_FLAG) || ['EMPTY']);
-			if (!tokenizer.next(';')) ParseError(';');
-			result.push(Expression(SILENT_FLAG) || ['EMPTY']);
+			result.push(Expression() || ['EMPTY']);
+			if (!tokenizer.next(';')) ParseError();
+			result.push(Expression() || ['EMPTY']);
 		}
 
 		else if (tokenizer.test('in')) {
 
 			if (result[0] === AST.VAR && result.length > 2) {
-				ParseError(';');
+				ParseError();
 			} else tokenizer.next();
 
 
@@ -540,35 +548,38 @@ define([
 			result.push(Expression());
 		}
 
-		else ParseError(';', 'in');
+		else ParseError();
 
-		if (!tokenizer.next(')')) ParseError(')');
+		if (!tokenizer.next(')')) ParseError();
+
+		// parse required statement
 		result.push(Statement(true));
 		return result;
 
 	}
 
-	// simplify, check for case, continue, break new lines & labels
+	// INCOMPLETE AT ALL: simplify, check for case, continue, break new lines & labels
 	function SwitchStatement() {
 		if (!tokenizer.next('switch')) return;
 		var expression = BracketExpression();
 		var caseStatements = [], defaultStatements;
-		if (!tokenizer.next('{')) ParseError('{');
+		if (!tokenizer.next('{')) ParseError();
 		if (!tokenizer.test('}')) do {
 
 			if (tokenizer.next('case')) {
 				var condition = Expression();
-				if (!tokenizer.next(':')) ParseError(':');
+				if (!tokenizer.next(':')) ParseError();
 				caseStatements.push([condition, Statements()])
 			} else if (tokenizer.next('default')) {
-				if (!tokenizer.next(':')) ParseError(':');
-				if (defaultStatements) ParseError('more than one default');
+				if (!tokenizer.next(':')) ParseError();
+				if (defaultStatements)
+					SyntaxError(Messages.MULTIPLE_DEFAULT);
 				defaultStatements = Statements();
 			} else break;
 
-		} while (!tokenizer.test(Tokenizer.T_EOF));
+		} while (!tokenizer.test(T_EOF));
 
-		if (!tokenizer.next('}')) ParseError('}');
+		if (!tokenizer.next('}')) ParseError();
 
 		return [AST.SWITCH, expression, caseStatements, defaultStatements];
 	}
@@ -576,121 +587,195 @@ define([
 
 
 
-	function Block(required) {
+	function Block(flags) {
 		if (tokenizer.next('{')) {
-			var statements = Statements();
-			if (!tokenizer.next('}')) ParseError('}');
+			// parse optional statement list
+			var statements = Statements(flags &= ~F_REQUIRED);
+			if (!tokenizer.next('}')) ParseError();
 			return [AST.BLOCK, statements];
-		} else if (required) ParseError('{...}');
+		} else if (flags & F_REQUIRED) ParseError();
 	}
-
-
 
 	function VariableStatement(flags) {
-		if (tokenizer.next('var')) {
-			var variable, variables = [AST.VAR];
-			do {
-				variable = tokenizer.next(tokenizer.ID);
-				if (!variable) ParseError('identifier');
-				variable = [variable.value];
-				if (tokenizer.next('='))
-					variable.push(AssignmentExpression(flags));
-				variables.push(variable);
-			} while (tokenizer.next(','));
-			return variables;
-		}
+
+		var variable, variables = [AST.VAR];
+		flags |= F_REQUIRED;
+
+		do {
+			variable = tokenizer.next(tokenizer.ID);
+			if (!variable) ParseError();
+			variable = [variable.value];
+			if (tokenizer.next('=')) {
+				// parse required expression
+				variable.push(AssignmentExpression(flags));
+			}
+			variables.push(variable);
+		} while (tokenizer.next(','));
+		return variables;
 	}
 
-	// completed: simplify
-	function ThrowStatement() {
-		if (tokenizer.next('throw')) {
-			if (tokenizer.next(tokenizer.EOL))
-				ParseError('Illegal newline after throw');
-			return [AST.THROW, Expression()];
-		}
-	}
-
-	// completed: simplify & check for new lines bugs
 	function ReturnStatement() {
-		if (tokenizer.next('return')) {
-			var result = [AST.RETURN];
-			var expression = Expression(SILENT_FLAG);
-			if (expression) result.push(expression);
-			return result;
+		var result = [AST.RETURN];
+		// new line completes the statement
+		if (tokenizer.test(tokenizer.EOL)) return result;
+		// parse optional expression
+		var expression = Expression();
+		if (expression) result.push(expression);
+		return result;
+	}
+
+	function ThrowStatement() {
+		// new line is not allowed here
+		if (tokenizer.next(tokenizer.EOL))
+			SyntaxError(Messages.EOL_AFTER_THROW);
+		// parse required expression
+		return [AST.THROW, Expression(F_REQUIRED)];
+	}
+
+	function TryStatement(flags) {
+
+		var result = [AST.TRY, Block(flags |= F_REQUIRED)];
+
+		if (tokenizer.next('catch')) {
+			if (!tokenizer.next('(')) ParseError();
+			var varName = tokenizer.next(tokenizer.ID);
+			if (!varName) ParseError();
+			result.push(varName.value);
+			if (!tokenizer.next(')')) ParseError();
+			result.push(Block(flags));
+			if (tokenizer.next('finally'))
+				result.push(Block(flags));
 		}
+
+		else if (tokenizer.next('finally'))
+			result.push(Block(flags));
+
+		else SyntaxError(Messages.CATCH_FINALLY_MISSING);
+
+		return result;
 	}
 
-	// completed: simplify & check for new lines bugs
-	function BreakStatement() {
-		if (tokenizer.next('break')) {
-			var label = tokenizer.next(tokenizer.ID);
-			if (!label) return [AST.BREAK];
-			return [AST.BREAK, label.value];
+	function LabelledStatement(flags) {
+		var label = tokenizer.next(tokenizer.ID, ':');
+		if (label) label = label[0].value; else return;
+
+		// check if we already have this label
+		if (LABELS.hasOwnProperty(label))
+			SyntaxError(Messages.LABEL_REDECLARED, label);
+
+		// save label
+		LABELS[label] = true;
+
+		// parse required label statement
+		var statement = Statement(flags |= F_REQUIRED);
+
+		// remove label
+		delete LABELS[label];
+
+		return [AST.LABELLED, label, statement];
+	}
+
+	function BreakStatement(flags) {
+		var label;
+
+		// new line completes the statement
+		if (!tokenizer.test(tokenizer.EOL)) {
+			if (label = tokenizer.next(tokenizer.ID)) {
+				label = label.value
+			}
 		}
+
+		// check if break is allowed here
+		if (!label && !(flags & F_BREAK))
+			SyntaxError(Messages.ILLEGAL_BREAK);
+
+		// check for undefined label
+		if (label && !LABELS.hasOwnProperty(label))
+			SyntaxError(Messages.LABEL_UNDEFINED, label);
+
+		return (label ? [AST.BREAK, label] : [AST.BREAK]);
 	}
 
-	// completed: simplify & check for new lines bugs
-	function ContinueStatement() {
-		if (tokenizer.next('continue')) {
-			var label = tokenizer.next(tokenizer.ID);
-			if (!label) return [AST.CONTINUE];
-			return [AST.CONTINUE, label.value];
+	function ContinueStatement(flags) {
+		var label;
+
+		// new line completes the statement
+		if (!tokenizer.test(tokenizer.EOL)) {
+			if (label = tokenizer.next(tokenizer.ID)) {
+				label = label.value
+			}
 		}
+
+		// check if continue is allowed here
+		if (!(flags & F_CONTINUE))
+			SyntaxError(Messages.ILLEGAL_CONTINUE);
+
+		// check for undefined label
+		if (label && !LABELS.hasOwnProperty(label))
+			SyntaxError(Messages.LABEL_UNDEFINED, label);
+
+		return (label ? [AST.CONTINUE, label] : [AST.CONTINUE]);
 	}
 
-	function LabelledStatement() {
-		if (tokenizer.test(tokenizer.ID, ':')) return [
-			AST.LABELLED,
-			tokenizer.next().value,
-			(tokenizer.next(), Statement(true))
-		];
-	}
 
 
 
+	function Statement(flags) {
 
-	function Statement(required) {
+		var isRequired = flags & F_REQUIRED;
+		flags &= ~F_REQUIRED;
 
-		var result;
+		if (result = Block(flags)) return result;
 
-		if (result = Block()) return result;
-		else if (result = VariableStatement());
 		else if (tokenizer.next(';')) return ['EMPTY'];
-		else if (result = LabelledStatement()) return result;
-		else if (result = Expression(SILENT_FLAG));
-		else if (result = IfStatement()) return result;
+		else if (result = LabelledStatement(flags)) return result;
+		else if (result = Expression(flags));
+		else if (result = IfStatement(flags)) return result;
 
-		else if (result = ForStatement()) return result;
-		else if (result = DoStatement()) return result;
-		else if (result = WhileStatement()) return result;
+		else if (result = ForStatement(flags)) return result;
+		else if (result = DoStatement(flags)) return result;
+		else if (result = WhileStatement(flags)) return result;
 
-		else if (result = ContinueStatement());
-		else if (result = BreakStatement());
-		else if (result = ReturnStatement());
-		else if (result = WithStatement()) return result;
-		else if (result = SwitchStatement()) return result;
-		else if (result = ThrowStatement());
-		else if (result = TryStatement()) return result;
+		else if (tokenizer.next('var'))
+			result = VariableStatement(flags);
 
-		else if (required) ParseError('STATEMENT');
+
+
+		else if (tokenizer.next('return'))
+			result = ReturnStatement(flags);
+		else if (tokenizer.next('throw'))
+			result = ThrowStatement(flags);
+
+		else if (tokenizer.next('continue'))
+			result = ContinueStatement(flags);
+		else if (tokenizer.next('break'))
+			result = BreakStatement(flags);
+
+		else if (result = WithStatement(flags)) return result;
+		else if (result = SwitchStatement(flags)) return result;
+
+		else if (tokenizer.next('try'))
+			return TryStatement(flags);
+
+		else if (isRequired) ParseError();
 
 		if (!tokenizer.next(';') &&
 			!tokenizer.test('}') &&
-			!tokenizer.test(Tokenizer.T_ERR) &&
-			!tokenizer.test(Tokenizer.T_EOF) &&
+			!tokenizer.test(T_ERR) &&
+			!tokenizer.test(T_EOF) &&
 			!tokenizer.next(tokenizer.EOL)) {
-			ParseError(';');
+			ParseError();
 		}
 
 		return result;
 	}
 
-	function Statements() {
+	function Statements(flags) {
 		var statement, statements = [];
-		while (!tokenizer.test(Tokenizer.T_EOF)) {
-			if (statement = Statement()) {
+		while (!tokenizer.test(T_EOF)) {
+			if (statement = Statement(flags))
 				statements.push(statement);
-			} else break;
+			else break;
 		}
 		return statements;
 	}
@@ -698,12 +783,10 @@ define([
 	function Parser(source, fName) {
 		fileName = fName;
 		tokenizer.tokenize(source);
-
+		LABELS = {};
 		var statements = Statements();
-		if (!tokenizer.test(Tokenizer.T_EOF))
-			ParseError();
+		if (!tokenizer.test(T_EOF)) ParseError();
 		return statements;
-
 	}
 
 	return Parser;
