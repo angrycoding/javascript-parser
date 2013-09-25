@@ -1,10 +1,10 @@
 define([
 	'../Constants',
-	'Messages',
 	'TokenStream',
+	'SyntaxError',
 	'XMLParser',
 	'RegexpParser'
-], function(AST, Messages, tokenizer, XMLParser, RegexpParser) {
+], function(AST, tokenizer, SyntaxError, XMLParser, RegexpParser) {
 
 	var Tokenizer = tokenizer.constructor;
 	var T_EOF = Tokenizer.T_EOF;
@@ -12,10 +12,6 @@ define([
 
 	// used to convert control characters into regular characters
 	var stringEscape = /\\(x[0-9A-F]{2}|u[0-9A-F]{4}|.)/g;
-
-	var fileName = 'FILENAME';
-
-
 
 	var LABELS = {};
 
@@ -28,15 +24,6 @@ define([
 	// disallow "in" in expression
 	var F_NOIN = 1 << 3;
 
-
-	function placeHolders(str, replacements) {
-		return str.replace(/\{([^\}]*)\}/g, function(match, key) {
-			return (
-				replacements.hasOwnProperty(key) ?
-				replacements[key] : match
-			);
-		});
-	}
 
 	// replaces control sequences with actual characters
 	function escapeStringLiteral(string) {
@@ -63,47 +50,6 @@ define([
 		});
 	}
 
-	function SyntaxError(args) {
-
-		if (!(this instanceof arguments.callee)) {
-			var args = Array.prototype.slice.call(arguments);
-			throw new SyntaxError(args);
-		}
-
-		if (!args.length) {
-			var found = tokenizer.next();
-			if (found.type === T_EOF)
-				args.push('unexpected_eof');
-			else if (found.type === T_ERR)
-				args.push('unexpected_illegal');
-			else args.push('unexpected_token');
-			args.push(found.value);
-		}
-
-		var errorCode = args.shift(),
-			errorMessage = errorCode;
-
-		if (Messages.hasOwnProperty(errorCode))
-			errorMessage = Messages[errorCode];
-
-		var lineNumber = tokenizer.getLineNumber();
-
-		var message = placeHolders(Messages.syntax_error, {
-			fileName: fileName,
-			lineNumber: lineNumber,
-			message: placeHolders(errorMessage, args)
-		});
-
-
-		return {
-			code: errorCode,
-			file: fileName,
-			line: lineNumber,
-			toString: function() {
-				return message;
-			}
-		};
-	}
 
 
 	function LHSExpression(expression, position) {
@@ -779,8 +725,7 @@ define([
 	}
 
 	function Parser(source, fName) {
-		fileName = fName;
-		tokenizer.tokenize(source);
+		tokenizer.tokenize(source, fName);
 		LABELS = {};
 		var statements = Statements();
 		if (!tokenizer.test(T_EOF)) SyntaxError();

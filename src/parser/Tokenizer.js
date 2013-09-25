@@ -22,7 +22,7 @@ define(function() {
 
 		var contextData = {};
 		var tokenBuffer = [];
-		var inputString, inputLength;
+		var fileName, inputString, inputLength;
 
 		var lastMatchId = TOKEN_START;
 		var lastIgnoreId = IGNORE_START;
@@ -197,8 +197,9 @@ define(function() {
 
 		}
 
-		this.tokenize = function(input) {
+		this.tokenize = function(input, fName) {
 
+			fileName = fName;
 			inputString = input;
 			inputLength = input.length;
 
@@ -233,6 +234,10 @@ define(function() {
 				if (tokenBuffer[c].ignore) continue;
 				return tokenBuffer[c].value || tokenBuffer[c].type;
 			}
+		};
+
+		this.getFileName = function() {
+			return fileName;
 		};
 
 		this.getLineNumber = function() {
