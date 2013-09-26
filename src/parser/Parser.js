@@ -11,7 +11,7 @@ define([
 	var T_ERR = Tokenizer.T_ERR;
 
 	// used to convert control characters into regular characters
-	var stringEscape = /\\(x[0-9A-F]{2}|u[0-9A-F]{4}|.)/g;
+	var stringEscape = /\\(x[0-9A-F]{2}|u[0-9A-F]{4}|\n|.)/g;
 
 	var LABELS = {};
 
@@ -25,33 +25,36 @@ define([
 	var F_NOIN = 1 << 3;
 
 
-	// incorrect replacement for uDDDD and xDD
 	// replaces control sequences with actual characters
 	function escapeStringLiteral(string) {
 		var string = string.slice(1, -1);
 		return string.replace(stringEscape, function(str, match) {
-			switch (match[0] + match.length) {
+			switch (match[0]) {
+				// line continuation
+				case '\n': return '';
+				// null character
+				case '0': return String.fromCharCode(0);
 				// backspace
-				case 'b1': return String.fromCharCode(8);
+				case 'b': return String.fromCharCode(8);
 				// form feed
-				case 'f1': return String.fromCharCode(12);
+				case 'f': return String.fromCharCode(12);
 				// new line
-				case 'n1': return String.fromCharCode(10);
+				case 'n': return String.fromCharCode(10);
 				// carriage return
-				case 'r1': return String.fromCharCode(13);
+				case 'r': return String.fromCharCode(13);
 				// horizontal tab
-				case 't1': return String.fromCharCode(9);
-				// unicode sequence (4 hex digits: dddd)
-				case 'u5': return String.fromCharCode(parseInt(match.substr(1), 16));
+				case 't': return String.fromCharCode(9);
+				// vertical tab
+				case 'v': return String.fromCharCode(11);
 				// hexadecimal sequence (2 digits: dd)
-				case 'x3': return String.fromCharCode(parseInt(match.substr(1), 16));
+				case 'x': return String.fromCharCode(parseInt(match.substr(1), 16));
+				// unicode sequence (4 hex digits: dddd)
+				case 'u': return String.fromCharCode(parseInt(match.substr(1), 16));
 				// by default return escaped character "as is"
 				default: return match;
 			}
 		});
 	}
-
-
 
 	function LHSExpression(expression, position) {
 		while (expression[0] === AST.PARENS)

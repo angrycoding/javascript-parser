@@ -34,8 +34,8 @@ define('Tokenizer', function(Tokenizer) {
 	jsContext.match('KEYWORD', /debugger\b/, 'debugger');
 	jsContext.match('KEYWORD', /instanceof\b/, 'instanceof');
 
-	jsContext.match('STRING', /'(?:[^\'\\]|\\.)*'/);
-	jsContext.match('STRING', /"(?:[^\"\\]|\\.)*"/);
+	jsContext.match('STRING', /'(?:[^\n\'\\]|\\[^ux]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})*'/);
+	jsContext.match('STRING', /"(?:[^\n\"\\]|\\[^ux]|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4})*"/);
 	jsContext.match('HEX', /0[xX][0-9A-Fa-f]+/);
 	jsContext.match('DECIMAL', /(?:[0-9]*\.)?[0-9]+[eE][+-]?[0-9]+/);
 	jsContext.match('DECIMAL', /[0-9]*\.[0-9]+/);
