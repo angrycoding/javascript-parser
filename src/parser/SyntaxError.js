@@ -1,11 +1,9 @@
-define(['TokenStream', 'Messages'], function(TokenStream, Messages) {
+define(['Tokens', 'Messages'], function(Tokens, Messages) {
 
-	var Tokenizer = TokenStream.constructor;
-	var T_EOF = Tokenizer.T_EOF;
-	var T_ERR = Tokenizer.T_ERR;
+	var placeHolderRegExp = /\{([^\}]*)\}/g;
 
 	function placeHolders(str, replacements) {
-		return str.replace(/\{([^\}]*)\}/g, function(match, key) {
+		return str.replace(placeHolderRegExp, function(match, key) {
 			return (
 				replacements.hasOwnProperty(key) ?
 				replacements[key] : match
@@ -21,10 +19,10 @@ define(['TokenStream', 'Messages'], function(TokenStream, Messages) {
 		}
 
 		if (!args.length) {
-			var found = TokenStream.next();
-			if (found.type === T_EOF)
+			var found = Tokens.next();
+			if (found.type === Tokens.$EOF)
 				args.push('unexpected_eof');
-			else if (found.type === T_ERR)
+			else if (found.type === Tokens.$ERR)
 				args.push('unexpected_illegal');
 			else args.push('unexpected_token');
 			args.push(found.value);
@@ -36,8 +34,8 @@ define(['TokenStream', 'Messages'], function(TokenStream, Messages) {
 		if (Messages.hasOwnProperty(errorCode))
 			errorMessage = Messages[errorCode];
 
-		var fileName = TokenStream.getFileName(),
-			lineNumber = TokenStream.getLineNumber();
+		var fileName = Tokens.getFileName(),
+			lineNumber = Tokens.getLineNumber();
 
 		var message = placeHolders(Messages.syntax_error, {
 			fileName: fileName,

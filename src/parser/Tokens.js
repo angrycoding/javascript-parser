@@ -1,8 +1,8 @@
 define('Tokenizer', function(Tokenizer) {
 
-	var tokenStream = new Tokenizer();
+	var Tokens = new Tokenizer();
 
-	var jsContext = tokenStream.context('js');
+	var jsContext = Tokens.context('js');
 
 	jsContext.match('KEYWORD', /in\b/, 'in');
 	jsContext.match('KEYWORD', /if\b/, 'if');
@@ -101,7 +101,7 @@ define('Tokenizer', function(Tokenizer) {
 	jsContext.match(';');
 
 
-	var reContext = tokenStream.context('regexp');
+	var reContext = Tokens.context('regexp');
 	reContext.match('/');
 	reContext.match('\\');
 	reContext.match('(');
@@ -111,7 +111,7 @@ define('Tokenizer', function(Tokenizer) {
 	reContext.match(']');
 	reContext.match('EOL', /\x0A\x0D/);
 
-	var xmlContext = tokenStream.context('xml');
+	var xmlContext = Tokens.context('xml');
 
 	xmlContext.match('TAG_OPEN_START', /<[_:A-Za-z][-._:A-Za-z0-9]*/);
 	xmlContext.match('TAG_OPEN_END1', /[\x09\x0A\x0D\x20]*>/);
@@ -132,6 +132,6 @@ define('Tokenizer', function(Tokenizer) {
 
 	xmlContext.ignore(/<!--(?:[^-]|-(?!->))*-->/);
 
-	return tokenStream;
+	return Tokens;
 
 });

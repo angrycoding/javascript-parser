@@ -94,7 +94,12 @@ define(function() {
 				expression = args[0];
 				tokenId = (ignore ? IGNORE_START : TOKEN_START);
 			} else {
-				expression = args[1], tokenId = args[0], tokenId = (
+				expression = args[1], tokenId = args[0];
+
+				if (tokenId[0] === '$') throw 'CANT_START_WITH $';
+
+
+				tokenId = (
 					this.hasOwnProperty(tokenId) ?
 					this[tokenId] : this[tokenId] = (
 						ignore ? --lastIgnoreId : ++lastMatchId
@@ -280,11 +285,10 @@ define(function() {
 			return consume(selector, true);
 		};
 
+		this.$EOF = T_EOF;
+		this.$ERR = T_ERR;
+
 	};
-
-	Tokenizer.T_EOF = T_EOF;
-	Tokenizer.T_ERR = T_ERR;
-
 
 	return Tokenizer;
 

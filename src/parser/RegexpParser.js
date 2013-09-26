@@ -1,41 +1,39 @@
-define(['../Constants', 'TokenStream'], function(AST, tokenizer) {
-
-	var Tokenizer = tokenizer.constructor;
+define(['../Constants', 'Tokens'], function(AST, Tokens) {
 
 	// used to validate regular expression flags
 	var validRegexpFlags = /^(?:([gim])(?!.*\1))*$/;
 
 	function RegexpParser() {
 
-		if (!tokenizer.next('/')) return;
+		if (!Tokens.next('/')) return;
 
 		var result = '', inCharSet = false;
-		tokenizer.setContext('regexp');
+		Tokens.setContext('regexp');
 
 		while (true) {
 
-			if (tokenizer.test(tokenizer.EOL)) break;
-			if (tokenizer.test(Tokenizer.T_EOF)) break;
+			if (Tokens.test(Tokens.EOL)) break;
+			if (Tokens.test(Tokens.$EOF)) break;
 
-			if (!inCharSet && tokenizer.test('/')) break;
-			if (tokenizer.next('\\')) result += '\\';
-			else if (tokenizer.test('[')) inCharSet = true;
-			else if (tokenizer.test(']')) inCharSet = false;
+			if (!inCharSet && Tokens.test('/')) break;
+			if (Tokens.next('\\')) result += '\\';
+			else if (Tokens.test('[')) inCharSet = true;
+			else if (Tokens.test(']')) inCharSet = false;
 
-			result += tokenizer.next().value;
+			result += Tokens.next().value;
 		}
 
-		if (!tokenizer.next('/')) {
+		if (!Tokens.next('/')) {
 			ParseError('/UNTERMINATED');
 		}
 
-		tokenizer.setContext('js');
+		Tokens.setContext('js');
 
 		result = [AST.REGEXP, result];
 
 		var flags = (
-			tokenizer.next(tokenizer.ID) ||
-			tokenizer.next(tokenizer.KEYWORD)
+			Tokens.next(Tokens.ID) ||
+			Tokens.next(Tokens.KEYWORD)
 		);
 
 		if (flags) {
