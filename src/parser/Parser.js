@@ -20,7 +20,10 @@ define([
 	// disallow "in" in expression
 	var F_NOIN = 1 << 3;
 
-
+	// missing octal sequences
+	// missing ECMAScript 6 sequences
+	// more info at: http://mathiasbynens.be/notes/javascript-escapes
+	// ECMAScript 6: Unicode code point escapes
 	// replaces control sequences with actual characters
 	function escapeStringLiteral(string) {
 		var string = string.slice(1, -1);
@@ -52,6 +55,28 @@ define([
 		});
 	}
 
+	function FunctionParameters() {
+		var arg, args = [];
+		if (!Tokens.next('(')) SyntaxError();
+		if (!Tokens.test(')')) do {
+			arg = Tokens.next(Tokens.ID);
+			if (arg) args.push(arg.value)
+			else SyntaxError();
+		} while (Tokens.next(','));
+		if (!Tokens.next(')')) SyntaxError();
+		return args;
+	}
+
+	function FunctionBody() {
+		if (!Tokens.next('{'))
+			SyntaxError();
+		var result = Statements();
+		if (!Tokens.next('}'))
+			SyntaxError();
+		return result;
+	}
+
+
 	function LHSExpression(expression, position) {
 		while (expression[0] === AST.PARENS)
 			expression = expression[1];
@@ -81,6 +106,7 @@ define([
 		return result;
 	}
 
+
 	function ObjectLiteral() {
 		var key, result = [AST.OBJECT];
 		if (!Tokens.test('}')) do {
@@ -108,18 +134,13 @@ define([
 
 		result.push(name ? name.value : null);
 
-		if (!Tokens.next('(')) SyntaxError();
-		if (!Tokens.test(')')) do {
-			var arg = Tokens.next(Tokens.ID);
-			if (!arg) SyntaxError();
-			args.push(arg.value);
-		} while (Tokens.next(','));
-		if (!Tokens.next(')')) SyntaxError();
-
 		var saveLabels = LABELS;
 		LABELS = {};
 
-		result.push(args, Block(F_REQUIRED));
+		result.push(
+			FunctionParameters(),
+			FunctionBody()
+		);
 
 		LABELS = saveLabels;
 
@@ -182,9 +203,7 @@ define([
 			}
 
 			else if (Tokens.next('[')) {
-				if (Tokens.test(']'))
-					SyntaxError();
-				else Tokens.next();
+				if (Tokens.test(']')) SyntaxError();
 				if (left[0] !== AST.SELECTOR)
 					left = [AST.SELECTOR, left];
 				left.push(Expression(F_REQUIRED));
@@ -208,7 +227,10 @@ define([
 	// precedence 3
 	function PostfixExpression(flags) {
 		var expression = CallExpression(flags);
-		if (expression) return (
+		if (!expression) return;
+		// new line completes the expression
+		if (Tokens.test(Tokens.EOL)) return expression;
+		return (
 			Tokens.next('++') &&
 			[AST.INC, LHSExpression(expression, 1)] ||
 			Tokens.next('--') &&
@@ -426,39 +448,39 @@ define([
 	}
 
 
-
-
-
-
-	function BracketExpression() {
-		if (!Tokens.next('(')) SyntaxError();
-		var expression = Expression(F_REQUIRED);
-		if (!Tokens.next(')')) SyntaxError();
-		return expression;
-	}
-
-
 	function DoStatement(flags) {
-		var statement = Statement(flags | F_BREAK | F_CONTINUE | F_REQUIRED);
+		var result = [AST.DO_LOOP];
+		result.push(Statement(flags | F_BREAK | F_CONTINUE | F_REQUIRED));
 		if (!Tokens.next('while')) SyntaxError();
-		var expression = BracketExpression();
-		return [AST.DO_LOOP, statement, expression];
+		if (!Tokens.next('(')) SyntaxError();
+		result.push(Expression(F_REQUIRED));
+		if (!Tokens.next(')')) SyntaxError();
+		return result;
 	}
 
 	function WithStatement(flags) {
-		var expression = BracketExpression();
-		var statement = Statement(flags | F_REQUIRED);
-		return [AST.WITH, expression, statement];
+		var result = [AST.WITH];
+		if (!Tokens.next('(')) SyntaxError();
+		result.push(Expression(F_REQUIRED));
+		if (!Tokens.next(')')) SyntaxError();
+		result.push(Statement(flags | F_REQUIRED));
+		return result;
 	}
 
 	function WhileStatement(flags) {
-		var expression = BracketExpression();
-		var statement = Statement(flags | F_BREAK | F_CONTINUE | F_REQUIRED);
-		return [AST.WHILE_LOOP, expression, statement];
+		var result = [AST.WHILE_LOOP];
+		if (!Tokens.next('(')) SyntaxError();
+		result.push(Expression(F_REQUIRED));
+		if (!Tokens.next(')')) SyntaxError();
+		result.push(Statement(flags | F_BREAK | F_CONTINUE | F_REQUIRED));
+		return result;
 	}
 
 	function IfStatement(flags) {
-		var result = [AST.IF, BracketExpression()];
+		var result = [AST.IF];
+		if (!Tokens.next('(')) SyntaxError();
+		result.push(Expression(F_REQUIRED));
+		if (!Tokens.next(')')) SyntaxError();
 		result.push(Statement(flags |= F_REQUIRED));
 		if (Tokens.next('else'))
 			result.push(Statement(flags));
@@ -467,13 +489,12 @@ define([
 
 	// INCOMPLETE AT ALL: simplify!!!!
 	function ForStatement() {
-		if (!Tokens.next('for')) return;
 		if (!Tokens.next('(')) SyntaxError();
 
 		var result = (
-			Tokens.test('var') ?
-			VariableStatement(NO_IN_FLAG) :
-			Expression(SILENT_FLAG | NO_IN_FLAG) ||
+			Tokens.next('var') ?
+			VariableStatement(F_NOIN) :
+			Expression(F_NOIN) ||
 			['EMPTY']
 		);
 
@@ -507,8 +528,9 @@ define([
 
 	// INCOMPLETE AT ALL: simplify, check for case, continue, break new lines & labels
 	function SwitchStatement() {
-		if (!Tokens.next('switch')) return;
-		var expression = BracketExpression();
+		if (!Tokens.next('(')) SyntaxError();
+		var expression = Expression(F_REQUIRED);
+		if (!Tokens.next(')')) SyntaxError();
 		var caseStatements = [], defaultStatements;
 		if (!Tokens.next('{')) SyntaxError();
 		if (!Tokens.test('}')) do {
@@ -535,12 +557,10 @@ define([
 
 
 	function Block(flags) {
-		if (Tokens.next('{')) {
-			// parse optional statement list
-			var statements = Statements(flags &= ~F_REQUIRED);
-			if (!Tokens.next('}')) SyntaxError();
-			return [AST.BLOCK, statements];
-		} else if (flags & F_REQUIRED) SyntaxError();
+		// parse optional statement list
+		var statements = Statements(flags &= ~F_REQUIRED);
+		if (!Tokens.next('}')) SyntaxError();
+		return [AST.BLOCK, statements];
 	}
 
 	function VariableStatement(flags) {
@@ -581,7 +601,15 @@ define([
 
 	function TryStatement(flags) {
 
-		var result = [AST.TRY, Block(flags |= F_REQUIRED)];
+		var result = [AST.TRY];
+
+		flags &= ~F_REQUIRED;
+
+
+		if (!Tokens.next('{')) SyntaxError();
+		result.push(Statements(flags));
+		if (!Tokens.next('}')) SyntaxError();
+
 
 		if (Tokens.next('catch')) {
 			if (!Tokens.next('(')) SyntaxError();
@@ -589,13 +617,21 @@ define([
 			if (!varName) SyntaxError();
 			result.push(varName.value);
 			if (!Tokens.next(')')) SyntaxError();
-			result.push(Block(flags));
-			if (Tokens.next('finally'))
-				result.push(Block(flags));
+			if (!Tokens.next('{')) SyntaxError();
+			result.push(Statements(flags));
+			if (!Tokens.next('}')) SyntaxError();
+			if (Tokens.next('finally')) {
+				if (!Tokens.next('{')) SyntaxError();
+				result.push(Statements(flags));
+				if (!Tokens.next('}')) SyntaxError();
+			}
 		}
 
-		else if (Tokens.next('finally'))
-			result.push(Block(flags));
+		else if (Tokens.next('finally')) {
+			if (!Tokens.next('{')) SyntaxError();
+			result.push(Statements(flags));
+			if (!Tokens.next('}')) SyntaxError();
+		}
 
 		else SyntaxError('try_no_catchfinally');
 
@@ -681,57 +717,56 @@ define([
 
 
 
+	function FunctionStatement(flags) {
+		var result = Tokens.next(Tokens.ID);
+		if (!result) SyntaxError();
+		return [
+			'FUNC_DECL',
+			result.value,
+			FunctionParameters(),
+			FunctionBody()
+		];
+	}
+
+
+
 
 	function Statement(flags) {
 
 		var isRequired = flags & F_REQUIRED;
 		flags &= ~F_REQUIRED;
 
-		if (result = Block(flags)) return result;
 
-		else if (Tokens.next(';')) return ['EMPTY'];
+		if (Tokens.next(';')) return ['EMPTY'];
+		if (Tokens.next('{')) return Block(flags);
+		if (Tokens.next('if')) return IfStatement(flags);
+		if (Tokens.next('for')) return ForStatement(flags);
+		if (Tokens.next('do')) return DoStatement(flags);
+		if (Tokens.next('while')) return WhileStatement(flags);
+		if (Tokens.next('with')) return WithStatement(flags);
+		if (Tokens.next('try')) return TryStatement(flags);
+		if (Tokens.next('switch')) return SwitchStatement(flags);
+		if (Tokens.next('function')) return FunctionStatement(flags);
 
-		else if (Tokens.next('if'))
-			return IfStatement(flags);
+		if (result = LabelledStatement(flags)) return result;
 
-		else if (result = ForStatement(flags)) return result;
 
-		else if (Tokens.next('do'))
-			return DoStatement(flags);
-
-		else if (Tokens.next('while'))
-			return WhileStatement(flags);
-
-		else if (Tokens.next('var'))
+		if (Tokens.next('var'))
 			result = VariableStatement(flags);
-
-
-
-		else if (result = LabelledStatement(flags)) return result;
-
-
-
-		else if (result = Expression(flags));
-
-
 
 		else if (Tokens.next('return'))
 			result = ReturnStatement(flags);
+
 		else if (Tokens.next('throw'))
 			result = ThrowStatement(flags);
 
 		else if (Tokens.next('continue'))
 			result = ContinueStatement(flags);
+
 		else if (Tokens.next('break'))
 			result = BreakStatement(flags);
 
-		else if (Tokens.next('with'))
-			return WithStatement(flags);
-
-		else if (result = SwitchStatement(flags)) return result;
-
-		else if (Tokens.next('try'))
-			return TryStatement(flags);
+		else if (result = Expression(flags));
 
 		else if (isRequired) SyntaxError();
 
@@ -757,7 +792,7 @@ define([
 	}
 
 	function Parser(source, fName) {
-		Tokens.tokenize(source, fName);
+		Tokens.init(source, fName);
 		LABELS = {};
 		var statements = Statements();
 		if (!Tokens.test(Tokens.$EOF)) SyntaxError();

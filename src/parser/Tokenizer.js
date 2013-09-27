@@ -202,7 +202,7 @@ define(function() {
 
 		}
 
-		this.tokenize = function(input, fName) {
+		this.init = function(input, fName) {
 
 			fileName = fName;
 			inputString = input;
