@@ -1,4 +1,4 @@
-define(['../Constants', 'Tokens'], function(AST, Tokens) {
+define(['../../Constants', '../SyntaxError', 'Tokens'], function(AST, SyntaxError, Tokens) {
 
 	// used to validate regular expression flags
 	var validRegexpFlags = /^(?:([gim])(?!.*\1))*$/;
@@ -8,7 +8,6 @@ define(['../Constants', 'Tokens'], function(AST, Tokens) {
 		if (!Tokens.next('/')) return;
 
 		var result = '', inCharSet = false;
-		Tokens.setContext('regexp');
 
 		while (true) {
 
@@ -24,22 +23,17 @@ define(['../Constants', 'Tokens'], function(AST, Tokens) {
 		}
 
 		if (!Tokens.next('/')) {
-			ParseError('/UNTERMINATED');
+			SyntaxError('/UNTERMINATED');
 		}
-
-		Tokens.setContext('js');
 
 		result = [AST.REGEXP, result];
 
-		var flags = (
-			Tokens.next(Tokens.ID) ||
-			Tokens.next(Tokens.KEYWORD)
-		);
+		var flags = Tokens.next(Tokens.FLAGS);
 
 		if (flags) {
 			flags = flags.value;
 			if (!validRegexpFlags.test(flags))
-				ParseError('INVALID:' + flags);
+				SyntaxError('INVALID:' + flags);
 			result.push(flags);
 		}
 

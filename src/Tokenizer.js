@@ -6,14 +6,10 @@ define(function() {
 	var IGNORE_START = -3;
 	var TOKEN_START = 0;
 
-
-	function escapeRegExp(value) {
-		return value.replace(/([.?*+^$[\]\\(){}|-])/g, "\\$1");
-	}
-
-	function isRegExp(value) {
-		return (value instanceof RegExp);
-	}
+	// used to escape strings to use within regexp
+	var REGEXP_ESCAPE = /([.?*+^$[\]\\(){}|-])/g;
+	// used to replace references within regexp
+	var REGEXP_REFERENCE = /\[:([a-zA-Z_]+):\]/g;
 
 	function Tokenizer() {
 
@@ -21,22 +17,48 @@ define(function() {
 		var tokenIds = [];
 
 		var contextData = {};
+		var fragments = {};
 		var tokenBuffer = [];
-		var fileName, inputString, inputLength;
+
+		var currentCtx = 0;
+		var contextIds = 0;
+
+		var inputFileName, inputString, inputLength;
 
 		var lastMatchId = TOKEN_START;
 		var lastIgnoreId = IGNORE_START;
 
 
+		function resolveExpression(contextId, expression) {
+
+			if (expression instanceof RegExp) {
+
+				expression = expression.toString();
+				expression = expression.slice(1, -1);
+				expression = expression.replace(REGEXP_REFERENCE, function(match, fragment) {
+					if (!fragments.hasOwnProperty(contextId)) return match;
+					if (!fragments[contextId].hasOwnProperty(fragment)) return match;
+					return '(?:' + fragments[contextId][fragment].join('|') + ')';
+				});
+
+			} else expression = expression.replace(REGEXP_ESCAPE, '\\$1');
+
+
+			return expression;
+
+		}
+
+
 		// match next token and put it into the tokenBuffer
 		function readTokenToBuffer() {
-
+			// init local variables
 			var startPos, matchPos, matchStr, match, length;
 
 			for (;;) if (tokenRegExp.lastIndex !== inputLength) {
 				startPos = tokenRegExp.lastIndex;
 				if (match = tokenRegExp.exec(inputString)) {
-					matchPos = match.index;
+					matchStr = match[0], matchPos = match.index;
+
 					// check if we have T_ERR token
 					if (length = matchPos - startPos) {
 						tokenBuffer.push({
@@ -45,9 +67,12 @@ define(function() {
 							value: inputString.substr(startPos, length)
 						});
 					}
+
 					length = match.length;
+
 					// find matched group index
-					while (!(matchStr = match[length--]));
+					while (match[length--] === undefined);
+
 					// obtain token info
 					match = tokenIds[length];
 					// match next token in case if this one is ignored
@@ -59,16 +84,17 @@ define(function() {
 						value: matchStr
 					});
 				}
+
 				// return T_ERR token in case if we couldn't match anything
 				else return (
 					tokenRegExp.lastIndex = inputLength,
-					length = inputLength - startPos &&
 					tokenBuffer.push({
 						type: T_ERR,
 						pos: startPos,
-						value: inputString.substr(startPos, length)
+						value: inputString.slice(startPos)
 					})
 				);
+
 			}
 			// return T_EOF if we reached end of file
 			else return tokenBuffer.push({
@@ -86,6 +112,7 @@ define(function() {
 		}
 
 		function addExpression(contextId, args, ignore) {
+
 			if (args.length === 0) return;
 
 			var tokenId, expression;
@@ -107,10 +134,7 @@ define(function() {
 				);
 			}
 
-			if (isRegExp(expression)) {
-				expression = expression.toString();
-				expression = expression.slice(1, -1);
-			} else expression = escapeRegExp(expression);
+			expression = resolveExpression(contextId, expression);
 
 			if (!contextData.hasOwnProperty(contextId))
 				contextData[contextId] = [[], []];
@@ -119,6 +143,22 @@ define(function() {
 			contextData[contextId][1].push(tokenId);
 
 			return this;
+		}
+
+		function addFragment(contextId, args) {
+
+			if (args.length < 2) return;
+			var name = args[0], value = args[1];
+
+
+			if (!fragments.hasOwnProperty(contextId))
+				fragments[contextId] = {};
+
+			if (!fragments[contextId].hasOwnProperty(name))
+				fragments[contextId][name] = [];
+
+			value = resolveExpression(contextId, value);
+			fragments[contextId][name].push(value);
 		}
 
 
@@ -202,10 +242,25 @@ define(function() {
 
 		}
 
-		this.init = function(input, fName) {
 
-			fileName = fName;
+
+		function setContext(contextId) {
+			var offset = 0;
+			if (tokenBuffer.length) offset = tokenBuffer[0].pos;
+			else if (tokenRegExp) offset = tokenRegExp.lastIndex;
+			tokenBuffer = [], currentCtx = contextId;
+			tokenIds = contextData[contextId][1];
+			tokenRegExp = contextData[contextId][0];
+			tokenRegExp.lastIndex = offset;
+		}
+
+
+
+
+		this.init = function(input, fileName) {
+
 			inputString = input;
+			inputFileName = fileName;
 			inputLength = input.length;
 
 			for (var contextId in contextData) {
@@ -218,31 +273,19 @@ define(function() {
 
 			tokenBuffer = [];
 
-			this.setContext('js');
-
+			setContext(0);
 		};
 
-		this.setContext = function(contextId) {
-			var offset = 0;
 
-			if (tokenBuffer.length) offset = tokenBuffer[0].pos;
-			else if (tokenRegExp) offset = tokenRegExp.lastIndex;
 
-			tokenBuffer = [];
-			tokenIds = contextData[contextId][1];
-			tokenRegExp = contextData[contextId][0];
-			tokenRegExp.lastIndex = offset;
-		};
 
-		this.getFragment = function() {
-			for (var c = 0; c < tokenBuffer.length; c++) {
-				if (tokenBuffer[c].ignore) continue;
-				return tokenBuffer[c].value || tokenBuffer[c].type;
-			}
-		};
+
+
+
+
 
 		this.getFileName = function() {
-			return fileName;
+			return inputFileName;
 		};
 
 		this.getLineNumber = function() {
@@ -259,31 +302,48 @@ define(function() {
 
 		};
 
-		this.context = function(contextId) {
 
-			var instance = this;
 
-			return {
-				match: function() {
-					addExpression.call(instance, contextId, arguments, false);
-				},
-				ignore: function() {
-					addExpression.call(instance, contextId, arguments, true);
-				}
+
+
+		function extend(contextId, instance) {
+
+			instance.match = function() {
+				addExpression.call(this, contextId, arguments, false);
+			};
+
+			instance.fragment = function(name, value) {
+				addFragment(contextId, arguments);
+			};
+
+			instance.ignore = function() {
+				addExpression.call(this, contextId, arguments, true);
+			};
+
+			instance.test = function() {
+				if (currentCtx !== contextId) setContext(contextId);
+				var selector = Array.prototype.slice.call(arguments);
+				return !!consume(selector, false);
+			};
+
+			instance.next = function() {
+				if (currentCtx !== contextId) setContext(contextId);
+				var selector = Array.prototype.slice.call(arguments);
+				return consume(selector, true);
 			};
 
 
+			return instance;
+		}
+
+
+		this.extend = function() {
+			var contextId = ++contextIds;
+			return extend(++contextId, {});
 		};
 
-		this.test = function() {
-			var selector = Array.prototype.slice.call(arguments);
-			return !!consume(selector, false);
-		};
+		extend(0, this);
 
-		this.next = function() {
-			var selector = Array.prototype.slice.call(arguments);
-			return consume(selector, true);
-		};
 
 		this.$EOF = T_EOF;
 		this.$ERR = T_ERR;

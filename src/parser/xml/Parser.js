@@ -1,4 +1,4 @@
-define(['../Constants', 'Tokens'], function(AST, Tokens) {
+define(['../../Constants', '../SyntaxError', 'Tokens'], function(AST, SyntaxError, Tokens) {
 
 	function trimLeft(value) {
 		return String(value).replace(/^\s+/, '');
@@ -14,14 +14,14 @@ define(['../Constants', 'Tokens'], function(AST, Tokens) {
 		var attrs = [], attrName, attrValue;
 
 		while (attrName = Tokens.next(Tokens.ATTR_NAME)) {
-			if (!Tokens.next(Tokens.EQUALS)) ParseError('=');
+			if (!Tokens.next(Tokens.EQUALS)) SyntaxError('=');
 
 			if (attrValue = Tokens.next(Tokens.ATTR_VALUE))
 				attrs.push([
 					trimLeft(attrName.value),
 					attrValue.value.slice(1).slice(0, -1)
 				]);
-			else ParseError('ATTR_VALUE');
+			else SyntaxError('ATTR_VALUE');
 		}
 
 		result.push(attrs);
@@ -34,13 +34,13 @@ define(['../Constants', 'Tokens'], function(AST, Tokens) {
 				closeTag = closeTag.slice(2).slice(0, -1);
 			}
 			if (!closeTag || closeTag !== tagName)
-				ParseError('</' + tagName + '>');
+				SyntaxError('</' + tagName + '>');
 		}
 
 		else if (Tokens.next(Tokens.TAG_OPEN_END2)) {
 		}
 
-		else ParseError('ATTR_NAME', '>', '/>');
+		else SyntaxError('ATTR_NAME', '>', '/>');
 
 		return result;
 	}
@@ -80,7 +80,7 @@ define(['../Constants', 'Tokens'], function(AST, Tokens) {
 			if (Tokens.test('?>')) break;
 			result += Tokens.next().value;
 		}
-		if (!Tokens.next('?>')) ParseError('?>');
+		if (!Tokens.next('?>')) SyntaxError('?>');
 		return ['PROC', result];
 	}
 
@@ -101,10 +101,9 @@ define(['../Constants', 'Tokens'], function(AST, Tokens) {
 	}
 
 	function XMLLiteral() {
-		Tokens.setContext('xml');
+		Tokens.next(Tokens.EOL);
 		var result = (parseXMLTag() || parseCDATA());
-		if (!result) ParseError('XML_TAG', 'CDATA');
-		Tokens.setContext('js');
+		if (!result) SyntaxError('XML_TAG', 'CDATA');
 		return result;
 	}
 

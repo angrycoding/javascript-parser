@@ -1,9 +1,6 @@
 define([
-	'../Constants',
-	'Tokens',
-	'SyntaxError',
-	'XMLParser',
-	'RegexpParser'
+	'../Constants', 'Tokens', 'SyntaxError',
+	'xml/Parser', 'regexp/Parser'
 ], function(AST, Tokens, SyntaxError, XMLParser, RegexpParser) {
 
 	// used to convert control characters into regular characters
@@ -19,6 +16,8 @@ define([
 	var F_CONTINUE = 1 << 2;
 	// disallow "in" in expression
 	var F_NOIN = 1 << 3;
+
+	var F_LOOP = F_BREAK | F_CONTINUE;
 
 	// missing octal sequences
 	// missing ECMAScript 6 sequences
@@ -75,20 +74,6 @@ define([
 			SyntaxError();
 		return result;
 	}
-
-
-	function LHSExpression(expression, position) {
-		while (expression[0] === AST.PARENS)
-			expression = expression[1];
-		if (expression[0] !== AST.SELECTOR) {
-			if (position === -1) SyntaxError('bad_lhs_prefix');
-			if (position === 1) SyntaxError('bad_lhs_postfix');
-			SyntaxError('bad_lhs_assign');
-		}
-		return expression;
-	}
-
-
 
 	// wise to use AST.EMPTY instead of AST.UNDEFINED?
 	function ArrayLiteral() {
@@ -170,6 +155,23 @@ define([
 			return [AST.PARENS, expression];
 		}
 
+		if (Tokens.next('#require')) {
+
+			if (!Tokens.next('(')) SyntaxError();
+
+			var result = Tokens.next(Tokens.STRING);
+			if (!result) SyntaxError();
+			result = ['#REQUIRE', escapeStringLiteral(result.value)];
+
+			if (!Tokens.test(')') && Tokens.next(',')) do {
+				result.push(AssignmentExpression(F_REQUIRED));
+			} while (Tokens.next(','));
+
+			if (!Tokens.next(')')) SyntaxError();
+
+			return result;
+		}
+
 		if (Tokens.test('<')) return XMLParser();
 		if (Tokens.test('/')) return RegexpParser();
 
@@ -232,9 +234,9 @@ define([
 		if (Tokens.test(Tokens.EOL)) return expression;
 		return (
 			Tokens.next('++') &&
-			[AST.INC, LHSExpression(expression, 1)] ||
+			[AST.INC, expression] ||
 			Tokens.next('--') &&
-			[AST.DEC, LHSExpression(expression, 1)] ||
+			[AST.DEC, expression] ||
 			expression
 		);
 	}
@@ -257,9 +259,9 @@ define([
 			Tokens.next('!') &&
 			[AST.NOT, UnaryExpression(F_REQUIRED)] ||
 			Tokens.next('++') &&
-			[AST.UINC, LHSExpression(UnaryExpression(F_REQUIRED), -1)] ||
+			[AST.UINC, UnaryExpression(F_REQUIRED)] ||
 			Tokens.next('--') &&
-			[AST.UDEC, LHSExpression(UnaryExpression(F_REQUIRED), -1)] ||
+			[AST.UDEC, UnaryExpression(F_REQUIRED)] ||
 			PostfixExpression(flags)
 		);
 	}
@@ -409,29 +411,29 @@ define([
 		var expression = ConditionalExpression(flags);
 		if (flags |= F_REQUIRED, expression) return (
 			Tokens.next('=') &&
-			[AST.ASSIGN, LHSExpression(expression), AssignmentExpression(flags)] ||
+			[AST.ASSIGN, expression, AssignmentExpression(flags)] ||
 			Tokens.next('*=') &&
-			[AST.ASSIGN_MUL, LHSExpression(expression), AssignmentExpression(flags)] ||
+			[AST.ASSIGN_MUL, expression, AssignmentExpression(flags)] ||
 			Tokens.next('/=') &&
-			[AST.ASSIGN_DIV, LHSExpression(expression), AssignmentExpression(flags)] ||
+			[AST.ASSIGN_DIV, expression, AssignmentExpression(flags)] ||
 			Tokens.next('%=') &&
-			[AST.ASSIGN_MOD, LHSExpression(expression), AssignmentExpression(flags)] ||
+			[AST.ASSIGN_MOD, expression, AssignmentExpression(flags)] ||
 			Tokens.next('+=') &&
-			[AST.ASSIGN_ADD, LHSExpression(expression), AssignmentExpression(flags)] ||
+			[AST.ASSIGN_ADD, expression, AssignmentExpression(flags)] ||
 			Tokens.next('-=') &&
-			[AST.ASSIGN_SUB, LHSExpression(expression), AssignmentExpression(flags)] ||
+			[AST.ASSIGN_SUB, expression, AssignmentExpression(flags)] ||
 			Tokens.next('<<=') &&
-			[AST.ASSIGN_BSHL, LHSExpression(expression), AssignmentExpression(flags)] ||
+			[AST.ASSIGN_BSHL, expression, AssignmentExpression(flags)] ||
 			Tokens.next('>>=') &&
-			[AST.ASSIGN_BSHR, LHSExpression(expression), AssignmentExpression(flags)] ||
+			[AST.ASSIGN_BSHR, expression, AssignmentExpression(flags)] ||
 			Tokens.next('>>>=') &&
-			[AST.ASSIGN_BSHRZ, LHSExpression(expression), AssignmentExpression(flags)] ||
+			[AST.ASSIGN_BSHRZ, expression, AssignmentExpression(flags)] ||
 			Tokens.next('&=') &&
-			[AST.ASSIGN_BAND, LHSExpression(expression), AssignmentExpression(flags)] ||
+			[AST.ASSIGN_BAND, expression, AssignmentExpression(flags)] ||
 			Tokens.next('^=') &&
-			[AST.ASSIGN_BXOR, LHSExpression(expression), AssignmentExpression(flags)] ||
+			[AST.ASSIGN_BXOR, expression, AssignmentExpression(flags)] ||
 			Tokens.next('|=') &&
-			[AST.ASSIGN_BOR, LHSExpression(expression), AssignmentExpression(flags)] ||
+			[AST.ASSIGN_BOR, expression, AssignmentExpression(flags)] ||
 			expression
 		);
 	}
@@ -450,11 +452,13 @@ define([
 
 	function DoStatement(flags) {
 		var result = [AST.DO_LOOP];
-		result.push(Statement(flags | F_BREAK | F_CONTINUE | F_REQUIRED));
+		flags |= F_LOOP | F_REQUIRED;
+		result.push(Statement(flags));
 		if (!Tokens.next('while')) SyntaxError();
 		if (!Tokens.next('(')) SyntaxError();
 		result.push(Expression(F_REQUIRED));
 		if (!Tokens.next(')')) SyntaxError();
+		if (Tokens.next(';'));
 		return result;
 	}
 
@@ -469,10 +473,11 @@ define([
 
 	function WhileStatement(flags) {
 		var result = [AST.WHILE_LOOP];
+		flags |= F_LOOP | F_REQUIRED;
 		if (!Tokens.next('(')) SyntaxError();
 		result.push(Expression(F_REQUIRED));
 		if (!Tokens.next(')')) SyntaxError();
-		result.push(Statement(flags | F_BREAK | F_CONTINUE | F_REQUIRED));
+		result.push(Statement(flags));
 		return result;
 	}
 
@@ -486,6 +491,9 @@ define([
 			result.push(Statement(flags));
 		return result;
 	}
+
+
+
 
 	// INCOMPLETE AT ALL: simplify!!!!
 	function ForStatement() {
@@ -528,23 +536,30 @@ define([
 
 	// INCOMPLETE AT ALL: simplify, check for case, continue, break new lines & labels
 	function SwitchStatement() {
+
 		if (!Tokens.next('(')) SyntaxError();
 		var expression = Expression(F_REQUIRED);
 		if (!Tokens.next(')')) SyntaxError();
+
 		var caseStatements = [], defaultStatements;
 		if (!Tokens.next('{')) SyntaxError();
+
 		if (!Tokens.test('}')) do {
 
 			if (Tokens.next('case')) {
 				var condition = Expression();
 				if (!Tokens.next(':')) SyntaxError();
-				caseStatements.push([condition, Statements()])
-			} else if (Tokens.next('default')) {
+				caseStatements.push([condition, Statements(F_BREAK)])
+			}
+
+			else if (Tokens.next('default')) {
 				if (!Tokens.next(':')) SyntaxError();
 				if (defaultStatements)
 					SyntaxError('double_switch_default');
-				defaultStatements = Statements();
-			} else break;
+				defaultStatements = Statements(F_BREAK);
+			}
+
+			else break;
 
 		} while (!Tokens.test(Tokens.$EOF));
 
@@ -721,7 +736,7 @@ define([
 		var result = Tokens.next(Tokens.ID);
 		if (!result) SyntaxError();
 		return [
-			'FUNC_DECL',
+			AST.FUNCTION,
 			result.value,
 			FunctionParameters(),
 			FunctionBody()
@@ -772,9 +787,9 @@ define([
 
 		if (!Tokens.next(';') &&
 			!Tokens.test('}') &&
+			!Tokens.test(Tokens.EOL) &&
 			!Tokens.test(Tokens.$ERR) &&
-			!Tokens.test(Tokens.$EOF) &&
-			!Tokens.next(Tokens.EOL)) {
+			!Tokens.test(Tokens.$EOF)) {
 			SyntaxError();
 		}
 
@@ -795,7 +810,8 @@ define([
 		Tokens.init(source, fName);
 		LABELS = {};
 		var statements = Statements();
-		if (!Tokens.test(Tokens.$EOF)) SyntaxError();
+		if (!Tokens.test(Tokens.$EOF))
+			SyntaxError();
 		return statements;
 	}
 

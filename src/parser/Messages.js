@@ -9,8 +9,5 @@ define({
 	undef_label: "Undefined label '{0}'",
 	bad_break: "Illegal break statement (not within the loop or switch)",
 	bad_continue: "Illegal continue statement (not within the loop)",
-	bad_lhs_prefix: "Invalid left-hand side expression in prefix operation",
-	bad_lhs_postfix: "Invalid left-hand side expression in postfix operation",
-	bad_lhs_assign: "Invalid left-hand side in assignment",
 	double_switch_default: "More than one default clause in switch statement"
 });

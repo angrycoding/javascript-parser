@@ -6,21 +6,29 @@
 		<script type="text/javascript" src="beautify.js"></script>
 		<script type="text/javascript" src="krang.js"></script>
 
-		<script id="script" type="text/plain">
+		<script type="text/plain" id="script">
 
+			var regexp = /[A-Za-z]+(a|b|c)+/gm;
+			var xml = <div style="border: 1px solid red;"></div>.test(/regexp/g);
 
-			var x = 10;
+			do {
+				alert(1);
+			} while (true);
 
-			while (x--) {
-				alert(x);
-			}
+			alert('string');
+			alert(X_CONSTS);
+
+			// var js = {x: function(a, b, c){ alert(arguments); }};
+
+			// if (true) {
+			// 	new x;
+			// }
 
 
 		</script>
 
-		<script type="text/javascript">
 
-			// var x = /
+		<script type="text/javascript">
 
 			function dump(value) {
 				console.info(
@@ -37,28 +45,21 @@
 				);
 			}
 
-
-			var script = document.getElementById('script').innerHTML;
-
 			krang({cache: false, debug: false}).require([
 				'src/parser/Parser',
-				'src/Generator',
-				'src/evaluator/Evaluator'
-			], function(Parser, Generator, Evaluator) {
+				'src/Generator'
+			], function(Parser, Generator) {
 
-				var AST = Parser(script);
-				dump(AST);
-				// console.info(Generator(AST));
+				var script = document.getElementById('script');
+				var AST = Parser(script.innerHTML, 'foo');
 
-				Evaluator(AST, function(result) {
-					console.info('DONE EVALUATION', result);
+				Generator(AST, function(result) {
+					console.info(result);
 				});
 
+
 			});
-
 		</script>
-
-
 	</head>
 	<body>
 
